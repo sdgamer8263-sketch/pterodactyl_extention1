@@ -110,6 +110,7 @@ rm addon-installer.sh
 echo -e "\n${GREEN}Installation complete! Ab flex karo 😎${NC}"
 
 # Terminal ko open rakhne ke liye aur path reset ke liye
-exec bash
-cd
-bash <(curl -sL https://raw.githubusercontent.com/sdgamer8263-sketch/SDGAMER.HOST/main/run.sh)
+
+
+esac
+done
