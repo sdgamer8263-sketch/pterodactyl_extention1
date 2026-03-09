@@ -1,7 +1,7 @@
 #!/bin/bash
 # =======================================
 #   AUTHOR    : SDGAMER
-#   TOOL      : PTERODACTYL EXTRA BLUEPRINT EXTENTION INSTALLER
+#   TOOL      : PTERODACTYL EXTENSION INSTALLER (FIXED)
 # ======================================= 
 
 RED='\033[0;31m'
@@ -21,20 +21,19 @@ cat <<'EOF'
 ██████╔╝██████╔╝╚██████╔╝██║  ██║██║ ╚═╝ ██║███████╗██║  ██║
 ╚═════╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝
 EOF
-echo -e "${GREEN}      PTERODACTYL EXTRA BLUEPRINT EXTENTION INSTALLER ${NC}"
+echo -e "${GREEN}      PTERODACTYL EXTENSION INSTALLER (FIXED INPUT) ${NC}"
 echo "======================================================="
 echo
 
-# Directory check
+# 1. Check Directory
 if [ ! -d "/var/www/pterodactyl" ]; then
     echo -e "${RED}Error: /var/www/pterodactyl directory not found!${NC}"
     exit 1
 fi
-
 cd /var/www/pterodactyl || exit
 
-# Extension Selection
-echo -e "${YELLOW}Fetching extensions list...${NC}"
+# 2. Setup Temp Directory
+echo -e "${YELLOW}Extensions download hochche...${NC}"
 rm -rf temp_ext
 git clone https://github.com/sdgamer8263-sketch/pterodactyl_extention.git temp_ext &> /dev/null
 
@@ -42,18 +41,20 @@ cd temp_ext || exit 1
 files=(*.blueprint)
 
 if [ ${#files[@]} -eq 0 ]; then
-    echo -e "${RED}No .blueprint files found!${NC}"
+    echo -e "${RED}Kono .blueprint file paoa jayni!${NC}"
     cd .. && rm -rf temp_ext
     exit 1
 fi
 
+# 3. Selection Menu
 echo -e "${CYAN}Available Extensions:${NC}"
 for i in "${!files[@]}"; do
     echo -e "${GREEN}[$((i+1))]${NC} ${files[$i]}"
 done
 
-echo -e "\n${YELLOW}Konta install korbe? (e.g. 1 ba 1,2 ba all):${NC}"
-read -p "> " choice
+echo -e "\n${YELLOW}Choose options (e.g. 1 or 1,2 or all):${NC}"
+# Input fix korar jonno /dev/tty use kora holo
+read -p "> " choice < /dev/tty
 
 selected_files=()
 if [[ "$choice" == "all" ]]; then
@@ -66,7 +67,8 @@ else
     done
 fi
 
-# Copying files
+# 4. Copy Files
+echo -e "\n${YELLOW}Copying files...${NC}"
 for file in "${selected_files[@]}"; do
     cp "$file" /var/www/pterodactyl/
 done
@@ -74,29 +76,27 @@ done
 cd /var/www/pterodactyl
 rm -rf temp_ext
 
-# Permissions & Optimize
+# 5. Fix Permissions & Optimize
+echo -e "${YELLOW}Fixing permissions...${NC}"
 chown -R www-data:www-data /var/www/pterodactyl
 chmod -R 755 /var/www/pterodactyl 
 php artisan migrate --force
 php artisan optimize:clear
 systemctl restart nginx
 
-# ---------- FIXING THE BLANK/ROOT ISSUE ----------
-echo -e "\n${CYAN}Starting Blueprint Addon Installer...${NC}"
-echo -e "${YELLOW}Note: Installer prompt na asa porjonto wait koro...${NC}"
+# 6. --- RUNNING INSTALLER (CRITICAL FIX) ---
+echo -e "\n${CYAN}Running Blueprint Addon Installer...${NC}"
 
-# Download installer
+# Script download kora
 curl -fsSL https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention/main/addon-installer.sh -o addon-installer.sh
 chmod +x addon-installer.sh
 
-# FORCE INTERACTIVE MODE: Jate installer cholle terminal exit na hoy
-# Amra installer-ti ke ekta sub-shell e run korbo kintu stdin (keyboard) khola rakhbo
-bash -i ./addon-installer.sh
+# FORCE INPUT FROM TERMINAL
+# Ei command ta ensure korbe jeno script ti keyboard theke input pay
+bash addon-installer.sh < /dev/tty
 
-# Installer sesh hoye gele file delete korbe
+# Cleanup
 rm addon-installer.sh
 
-echo -e "\n${GREEN}Kaaj sesh! Ekhon terminal check koro. 😎${NC}"
+echo -e "\n${GREEN}Installation Complete! 🎉${NC}"
 
-# Reset terminal prompt to current directory
-exec bash --login
