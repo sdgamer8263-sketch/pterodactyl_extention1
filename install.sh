@@ -25,15 +25,15 @@ echo -e "${GREEN}      PTERODACTYL EXTRA BLUEPRINT EXTENTION INSTALLER ${NC}"
 echo "======================================================="
 echo
 
-# ---------- DIRECTORY CHECK ----------
+# Directory check
 if [ ! -d "/var/www/pterodactyl" ]; then
     echo -e "${RED}Error: /var/www/pterodactyl directory not found!${NC}"
     exit 1
 fi
 
-cd /var/www/pterodactyl
+cd /var/www/pterodactyl || exit
 
-# ---------- DOWNLOAD & SELECTION ----------
+# Extension Selection
 echo -e "${YELLOW}Fetching extensions list...${NC}"
 rm -rf temp_ext
 git clone https://github.com/sdgamer8263-sketch/pterodactyl_extention.git temp_ext &> /dev/null
@@ -42,7 +42,7 @@ cd temp_ext || exit 1
 files=(*.blueprint)
 
 if [ ${#files[@]} -eq 0 ]; then
-    echo -e "${RED}No .blueprint files found in the repository!${NC}"
+    echo -e "${RED}No .blueprint files found!${NC}"
     cd .. && rm -rf temp_ext
     exit 1
 fi
@@ -52,12 +52,8 @@ for i in "${!files[@]}"; do
     echo -e "${GREEN}[$((i+1))]${NC} ${files[$i]}"
 done
 
-echo -e "\n${YELLOW}How would you like to install?${NC}"
-echo -e "  - Type a number (e.g., 1)"
-echo -e "  - Type multiple (e.g., 1,3)"
-echo -e "  - Type 'all' to install everything"
-echo
-read -p "Enter your choice: " choice
+echo -e "\n${YELLOW}Konta install korbe? (e.g. 1 ba 1,2 ba all):${NC}"
+read -p "> " choice
 
 selected_files=()
 if [[ "$choice" == "all" ]]; then
@@ -66,22 +62,12 @@ else
     IFS=',' read -r -a indices <<< "$choice"
     for index in "${indices[@]}"; do
         idx=$((index-1))
-        if [[ -n "${files[$idx]}" ]]; then
-            selected_files+=("${files[$idx]}")
-        fi
+        [[ -n "${files[$idx]}" ]] && selected_files+=("${files[$idx]}")
     done
 fi
 
-if [ ${#selected_files[@]} -eq 0 ]; then
-    echo -e "${RED}No valid selection made. Exiting.${NC}"
-    cd .. && rm -rf temp_ext
-    exit 1
-fi
-
-# ---------- INSTALLATION ----------
-echo -e "\n${YELLOW}Copying selected extensions...${NC}"
+# Copying files
 for file in "${selected_files[@]}"; do
-    echo -e " -> ${GREEN}$file${NC}"
     cp "$file" /var/www/pterodactyl/
 done
 
@@ -95,19 +81,22 @@ php artisan migrate --force
 php artisan optimize:clear
 systemctl restart nginx
 
-# ---------- ADDON INSTALLER (STABLE RUN) ----------
+# ---------- FIXING THE BLANK/ROOT ISSUE ----------
 echo -e "\n${CYAN}Starting Blueprint Addon Installer...${NC}"
-# Isse file download hogi aur stable run hogi
+echo -e "${YELLOW}Note: Installer prompt na asa porjonto wait koro...${NC}"
+
+# Download installer
 curl -fsSL https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention/main/addon-installer.sh -o addon-installer.sh
 chmod +x addon-installer.sh
 
-# Is step par installer ke options screen par dikhenge
-./addon-installer.sh
+# FORCE INTERACTIVE MODE: Jate installer cholle terminal exit na hoy
+# Amra installer-ti ke ekta sub-shell e run korbo kintu stdin (keyboard) khola rakhbo
+bash -i ./addon-installer.sh
 
-# Cleanup
+# Installer sesh hoye gele file delete korbe
 rm addon-installer.sh
 
-echo -e "\n${GREEN}Installation complete! Ab flex karo 😎${NC}"
+echo -e "\n${GREEN}Kaaj sesh! Ekhon terminal check koro. 😎${NC}"
 
-# Terminal ko open rakhne ke liye aur path reset ke liye
-exec bash
+# Reset terminal prompt to current directory
+exec bash --login
