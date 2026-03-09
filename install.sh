@@ -58,7 +58,7 @@ apt update -y && apt install git unzip -y
 
 # Clone repository to temp folder
 echo -e "${YELLOW}Downloading extension files...${NC}"
-git clone https://github.com/sdgamer8263-sketch/pterodactyl_extention.git temp_ext
+git clone https://github.com/sdgamer8263-sketch/pterodactyl_extention/main/ex.git temp_ext
 
 # =======================================================
 # NEW: SELECTION MENU LOGIC (Cases 1, 2, & 3)
