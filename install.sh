@@ -1,3 +1,4 @@
+#!/bin/bash
 # =======================================
 #   AUTHOR    : SDGAMER
 #   TOOL      : PTERODACTYL EXTRA BLUEPRINT EXTENTION INSTALLER
@@ -10,11 +11,10 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m' 
 
-# ---------- OS DETECTION (UBUNTU + DEBIAN) ----------
+# ---------- OS DETECTION ----------
 detect_os() {
     if [ -f /etc/os-release ]; then
         . /etc/os-release
-        # Check if ID is ubuntu OR debian
         if [[ "$ID" == "ubuntu" || "$ID" == "debian" ]]; then
             echo -e "${GREEN}Detected OS: $NAME ($ID)${NC}"
         else
@@ -22,7 +22,7 @@ detect_os() {
             exit 1
         fi
     else
-        echo -e "${RED}Error: OS detection failed. Cannot confirm OS type.${NC}"
+        echo -e "${RED}Error: OS detection failed.${NC}"
         exit 1
     fi
 } 
@@ -39,7 +39,7 @@ cat <<'EOF'
 ██████╔╝██████╔╝╚██████╔╝██║  ██║██║ ╚═╝ ██║███████╗██║  ██║
 ╚═════╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝
 EOF
-echo -e "${GREEN}      PTERODACTYL EXTRA BLUEPRINT EXTENTION INSTALLER (WITHOUT SFTP) ${NC}"
+echo -e "${GREEN}      PTERODACTYL EXTRA BLUEPRINT EXTENTION INSTALLER ${NC}"
 echo "======================================="
 echo
 } 
@@ -50,72 +50,62 @@ banner
 
 echo -e "${YELLOW}Starting Pterodactyl Extension Installation...${NC}" 
 
-# Move to directory and start installation
+# Move to directory
 cd /var/www/pterodactyl || { echo -e "${RED}Pterodactyl directory not found!${NC}"; exit 1; } 
 
 # Update and install dependencies
-apt update -y && apt install git unzip -y 
+apt update -y && apt install git unzip curl -y 
 
 # Clone repository
 echo -e "${YELLOW}Downloading extensions...${NC}"
+rm -rf temp_ext # Purge old temp if exists
 git clone https://github.com/sdgamer8263-sketch/pterodactyl_extention.git temp_ext
 
 # --- SELECTION MENU START ---
 cd temp_ext || { echo -e "${RED}Failed to access download directory!${NC}"; exit 1; }
 
-# Find all .blueprint files
 files=(*.blueprint)
 
-# Check if any files found
 if [ ${#files[@]} -eq 0 ]; then
-    echo -e "${RED}No .blueprint files found in the repository!${NC}"
+    echo -e "${RED}No .blueprint files found!${NC}"
     cd ..
     rm -rf temp_ext
     exit 1
 fi
 
 echo -e "\n${CYAN}Available Extensions:${NC}"
-# List files with numbers
 for i in "${!files[@]}"; do
     echo -e "${GREEN}[$((i+1))]${NC} ${files[$i]}"
 done
 
 echo -e "\n${YELLOW}How would you like to install?${NC}"
-echo -e "  - Type a single number (e.g., ${CYAN}1${NC})"
-echo -e "  - Type multiple numbers separated by commas (e.g., ${CYAN}1,3,5${NC})"
-echo -e "  - Type ${CYAN}all${NC} to install everything"
+echo -e "  - Single number (e.g., 1)"
+echo -e "  - Multiple numbers (e.g., 1,3,5)"
+echo -e "  - Type 'all' for everything"
 echo
 read -p "Enter your choice: " choice
 
 selected_files=()
 
 if [[ "$choice" == "all" ]]; then
-    echo -e "${GREEN}Selected all extensions.${NC}"
     selected_files=("${files[@]}")
 else
-    # Split by comma
     IFS=',' read -r -a indices <<< "$choice"
     for index in "${indices[@]}"; do
-        # Convert to 0-based index
         idx=$((index-1))
-        # Validate index
         if [[ -n "${files[$idx]}" ]]; then
             selected_files+=("${files[$idx]}")
-        else
-            echo -e "${RED}Warning: Invalid selection number '$index', skipping...${NC}"
         fi
     done
 fi
 
-# Check if selection is empty
 if [ ${#selected_files[@]} -eq 0 ]; then
-    echo -e "${RED}No valid extensions selected. Exiting.${NC}"
+    echo -e "${RED}No valid selection. Exiting.${NC}"
     cd ..
     rm -rf temp_ext
     exit 1
 fi
 
-# Install (Copy) files
 echo -e "\n${YELLOW}Installing selected extensions...${NC}"
 for file in "${selected_files[@]}"; do
     echo -e " -> Copying ${CYAN}$file${NC}..."
@@ -126,20 +116,26 @@ cd ..
 rm -rf temp_ext
 # --- SELECTION MENU END ---
 
-# Permissions
+# Fix Permissions
+echo -e "${YELLOW}Applying permissions...${NC}"
 chown -R www-data:www-data /var/www/pterodactyl
 chmod -R 755 /var/www/pterodactyl 
 
 # Optimization
+echo -e "${YELLOW}Optimizing Pterodactyl...${NC}"
 php artisan migrate --force
 php artisan optimize:clear
-systemctl restart nginx 
+systemctl restart nginx
 
-echo -e "${GREEN}Pterodactyl extension setup complete!${NC}" 
-
-# Running the blueprint addon installer
-echo -e "${CYAN}Running Blueprint Addon Installer...${NC}"
-# Note: Using 'yes' to pipe into the installer if it asks for confirmation
-yes | bash <(curl -fsSL https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention/main/addon-installer.sh) 
+# --- FIX: BLANK TERMINAL ISSUE ---
+# 'yes' pipe kora bondho kora hoyeche jate installer interactive thake
+echo -e "\n${CYAN}Running Blueprint Addon Installer...${NC}"
+# Script download kore manually run kora hocche jate terminal hang na kore
+curl -fsSL https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention/main/addon-installer.sh -o addon-installer.sh
+bash addon-installer.sh
+rm addon-installer.sh
 
 echo -e "\n${GREEN}Installation complete! Ab flex karo 😎${NC}"
+
+# Shell refresh korar jonno
+exec $SHELL
