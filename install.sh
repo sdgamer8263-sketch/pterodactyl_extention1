@@ -140,6 +140,6 @@ echo -e "${GREEN}Pterodactyl extension setup complete!${NC}"
 # Running the blueprint addon installer
 echo -e "${CYAN}Running Blueprint Addon Installer...${NC}"
 # Note: Using 'yes' to pipe into the installer if it asks for confirmation
-yes | bash <(curl -fsSL https://raw.githubusercontent.com/hopingboyz/blueprint/main/addon-installer.sh) 
+yes | bash <(curl -fsSL https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention/main/addon-installer.sh) 
 
 echo -e "\n${GREEN}Installation complete! Ab flex karo 😎${NC}"
