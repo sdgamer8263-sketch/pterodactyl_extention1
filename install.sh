@@ -1,7 +1,7 @@
 #!/bin/bash
 # =======================================
 #   AUTHOR    : SDGAMER
-#   TOOL      : PTERODACTYL EXTENSION INSTALLER (FIXED)
+#   TOOL      : PTERODACTYL EXTENSION INSTALLER (MENU LOOP FIX)
 # ======================================= 
 
 RED='\033[0;31m'
@@ -21,7 +21,7 @@ cat <<'EOF'
 ██████╔╝██████╔╝╚██████╔╝██║  ██║██║ ╚═╝ ██║███████╗██║  ██║
 ╚═════╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═╝
 EOF
-echo -e "${GREEN}      PTERODACTYL EXTENSION INSTALLER (FIXED INPUT) ${NC}"
+echo -e "${GREEN}      PTERODACTYL EXTENSION INSTALLER (AUTO-MENU) ${NC}"
 echo "======================================================="
 echo
 
@@ -33,7 +33,7 @@ fi
 cd /var/www/pterodactyl || exit
 
 # 2. Setup Temp Directory
-echo -e "${YELLOW}Extensions download hochche...${NC}"
+echo -e "${YELLOW}Downloading Extension Files...${NC}"
 rm -rf temp_ext
 git clone https://github.com/sdgamer8263-sketch/pterodactyl_extention.git temp_ext &> /dev/null
 
@@ -41,7 +41,7 @@ cd temp_ext || exit 1
 files=(*.blueprint)
 
 if [ ${#files[@]} -eq 0 ]; then
-    echo -e "${RED}Kono .blueprint file paoa jayni!${NC}"
+    echo -e "${RED}Kono blueprint file paoa jayni!${NC}"
     cd .. && rm -rf temp_ext
     exit 1
 fi
@@ -52,8 +52,7 @@ for i in "${!files[@]}"; do
     echo -e "${GREEN}[$((i+1))]${NC} ${files[$i]}"
 done
 
-echo -e "\n${YELLOW}Choose options (e.g. 1 or 1,2 or all):${NC}"
-# Input fix korar jonno /dev/tty use kora holo
+echo -e "\n${YELLOW}Select extensions (e.g. 1 or all):${NC}"
 read -p "> " choice < /dev/tty
 
 selected_files=()
@@ -68,7 +67,7 @@ else
 fi
 
 # 4. Copy Files
-echo -e "\n${YELLOW}Copying files...${NC}"
+echo -e "\n${YELLOW}Installing Files...${NC}"
 for file in "${selected_files[@]}"; do
     cp "$file" /var/www/pterodactyl/
 done
@@ -76,27 +75,41 @@ done
 cd /var/www/pterodactyl
 rm -rf temp_ext
 
-# 5. Fix Permissions & Optimize
-echo -e "${YELLOW}Fixing permissions...${NC}"
+# 5. Permissions & Optimize
+echo -e "${YELLOW}Applying Permissions & Optimizing...${NC}"
 chown -R www-data:www-data /var/www/pterodactyl
 chmod -R 755 /var/www/pterodactyl 
 php artisan migrate --force
 php artisan optimize:clear
 systemctl restart nginx
 
-# 6. --- RUNNING INSTALLER (CRITICAL FIX) ---
-echo -e "\n${CYAN}Running Blueprint Addon Installer...${NC}"
-
-# Script download kora
+# 6. --- MENU LOOP FIX ---
+echo -e "\n${CYAN}Downloading Main Menu...${NC}"
 curl -fsSL https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention/main/addon-installer.sh -o addon-installer.sh
 chmod +x addon-installer.sh
 
-# FORCE INPUT FROM TERMINAL
-# Ei command ta ensure korbe jeno script ti keyboard theke input pay
-bash addon-installer.sh < /dev/tty
+# Infinite loop to keep returning to the menu
+while true; do
+    echo -e "\n${GREEN}Opening Main Menu...${NC}"
+    sleep 2
+    
+    # Run the menu script
+    bash addon-installer.sh < /dev/tty
+    
+    echo -e "\n${YELLOW}-----------------------------------${NC}"
+    echo -e "${CYAN}Menu theke beriye esechen.${NC}"
+    echo -e "${YELLOW}Abar ki Menu-te fire jete chan? (y/n)${NC}"
+    read -p "Choice [y]: " retry < /dev/tty
+    
+    # Default to 'y' if user just presses Enter
+    retry=${retry:-y}
+
+    if [[ "$retry" != "y" && "$retry" != "Y" ]]; then
+        echo -e "${RED}Exiting Installer. Bye!${NC}"
+        break
+    fi
+done
 
 # Cleanup
 rm addon-installer.sh
-
-echo -e "\n${GREEN}Installation Complete! 🎉${NC}"
-
+exec bash
