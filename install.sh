@@ -8,24 +8,6 @@ BRANCH="main"
 FOLDER_PATH="ex"
 API_URL="https://api.github.com/repos/${GITHUB_REPO}/contents/${FOLDER_PATH}?ref=${BRANCH}"
 PTERODACTYL_DIR="/var/www/pterodactyl"
-TRACKING_FILE="${PTERODACTYL_DIR}/.installed_blueprints"
-
-# ==========================================
-# Display SDGAMER Banner
-# ==========================================
-clear
-cat << "EOF"
-  _____  _____   _____          __  __  ______  _____  
- / ____||  __ \ / ____|   /\   |  \/  ||  ____||  __ \ 
-| (___  | |  | | |  __   /  \  | \  / || |__   | |__) |
- \___ \ | |  | | | |_ | / /\ \ | |\/| ||  __|  |  _  / 
- ____) || |__| | |__| |/ ____ \| |  | || |____ | | \ \ 
-|_____/ |_____/ \_____/_/    \_\_|  |_||______||_|  \_\
-
-=======================================================
-         Pterodactyl Blueprint Installer
-=======================================================
-EOF
 
 # ==========================================
 # Pre-flight Checks
@@ -40,150 +22,147 @@ if [ ! -d "$PTERODACTYL_DIR" ]; then
     exit 1
 fi
 
-# Ensure jq is installed for JSON parsing
 if ! command -v jq &> /dev/null; then
     echo -e "\e[33m[Info] 'jq' is not installed. Installing it now...\e[0m"
     apt-get update -y -q && apt-get install -y jq -q
 fi
 
-# Ensure Blueprint is installed
-if ! command -v blueprint &> /dev/null; then
-    echo -e "\e[31m[Error] 'blueprint' command not found. Please install the Blueprint framework first.\e[0m"
-    exit 1
-fi
-
-# Create tracking file if it doesn't exist
-touch "$TRACKING_FILE"
-
 # ==========================================
-# Fetch Extensions
+# Function: Fetch & Prepare List
 # ==========================================
-echo -e "\n\e[36m[*] Fetching available extensions from GitHub...\e[0m"
-FILES_JSON=$(curl -s "$API_URL")
+fetch_and_prepare_list() {
+    echo -e "\n\e[36m[*] Fetching available extensions from GitHub...\e[0m"
+    FILES_JSON=$(curl -s "$API_URL")
 
-if echo "$FILES_JSON" | grep -q '"message":'; then
-    echo -e "\e[31m[Error] Failed to fetch from GitHub API. Check repo details or API limits.\e[0m"
-    exit 1
-fi
-
-# Parse names and URLs
-mapfile -t BLUEPRINT_NAMES < <(echo "$FILES_JSON" | jq -r '.[] | select(.name | endswith(".blueprint")) | .name')
-mapfile -t BLUEPRINT_URLS < <(echo "$FILES_JSON" | jq -r '.[] | select(.name | endswith(".blueprint")) | .download_url')
-
-if [ ${#BLUEPRINT_NAMES[@]} -eq 0 ]; then
-    echo -e "\e[33m[Info] No .blueprint extensions found in the repository folder ($FOLDER_PATH).\e[0m"
-    exit 1
-fi
-
-# ==========================================
-# Display List
-# ==========================================
-echo -e "\n----------------------------------------"
-echo -e " \e[1mAvailable Blueprint Extensions:\e[0m"
-echo "----------------------------------------"
-for i in "${!BLUEPRINT_NAMES[@]}"; do
-    status="\e[37m[ ]\e[0m" # Default state
-    # Check if installed
-    if grep -Fxq "${BLUEPRINT_NAMES[$i]}" "$TRACKING_FILE"; then
-        status="\e[32m[Installed]\e[0m" # Installed state (Green)
+    if echo "$FILES_JSON" | grep -q '"message":'; then
+        echo -e "\e[31m[Error] Failed to fetch from GitHub API. Check repo details or API limits.\e[0m"
+        sleep 2
+        return
     fi
-    echo -e "$((i+1)). $status ${BLUEPRINT_NAMES[$i]}"
-done
-echo "----------------------------------------"
 
-# ==========================================
-# Get User Input
-# ==========================================
-echo -e "\n\e[1mInstallation Options:\e[0m"
-echo "Case 1: Type a single number (e.g., 1) to install only that specific extension."
-echo "Case 2: Type comma-separated numbers (e.g., 1,2,3) to install multiple extensions at once."
-echo "Case 3: Type 'all' to install every available extension."
-echo ""
-read -p "Enter your choice: " choice
+    # Reset Arrays
+    ALL_OPTIONS=()
+    SORTED_OPTIONS=()
 
-# ==========================================
-# Process Selection
-# ==========================================
-to_install=()
+    # 1. Add Custom Script Options
+    ALL_OPTIONS+=("Plugin Manager Addon|script|bash <(curl -s 'https://raw.githubusercontent.com/sdgamer8263-sketch/EXD/main/Plugin%20Manager%20Addon.sh')|none")
+    ALL_OPTIONS+=("Pterodactyl Region|script|bash <(curl -s https://exeyarikus.info/pterodactyl-region/install)|none")
+    ALL_OPTIONS+=("SFTP Alias|script|bash <(curl -s https://raw.githubusercontent.com/sdgamer8263-sketch/EXD/main/sftp/sftp.sh)|none")
 
-if [[ "${choice,,}" == "all" ]]; then
+    # 2. Fetch and format .blueprint files
+    mapfile -t BLUEPRINT_NAMES < <(echo "$FILES_JSON" | jq -r '.[] | select(.name | endswith(".blueprint")) | .name')
+    mapfile -t BLUEPRINT_URLS < <(echo "$FILES_JSON" | jq -r '.[] | select(.name | endswith(".blueprint")) | .download_url')
+
     for i in "${!BLUEPRINT_NAMES[@]}"; do
-        to_install+=("$i")
+        raw_name="${BLUEPRINT_NAMES[$i]}"
+        url="${BLUEPRINT_URLS[$i]}"
+        
+        # Remove .blueprint extension & Capitalize first letter
+        clean_name="${raw_name%.blueprint}"
+        clean_name="${clean_name^}"
+        
+        ALL_OPTIONS+=("$clean_name|blueprint|$url|$raw_name")
     done
-else
-    # Parse comma separated values
-    IFS=',' read -ra ADDR <<< "$choice"
-    for i in "${ADDR[@]}"; do
-        i=$(echo "$i" | xargs) # trim whitespace
-        if [[ "$i" =~ ^[0-9]+$ ]] && [ "$i" -ge 1 ] && [ "$i" -le "${#BLUEPRINT_NAMES[@]}" ]; then
-            to_install+=("$((i-1))")
-        else
-            echo -e "\e[31m[Warning] Invalid input: $i. Skipping.\e[0m"
-        fi
-    done
-fi
 
-if [ ${#to_install[@]} -eq 0 ]; then
-    echo -e "\e[33m[Info] No valid extensions selected. Exiting.\e[0m"
-    exit 0
-fi
+    # 3. Sort options alphabetically (A-Z)
+    IFS=$'\n' SORTED_OPTIONS=($(sort <<<"${ALL_OPTIONS[*]}"))
+    unset IFS
+}
+
+# Initial Fetch
+fetch_and_prepare_list
 
 # ==========================================
-# Installation Loop
+# Interactive Menu Loop
 # ==========================================
-cd "$PTERODACTYL_DIR" || exit 1
-installed_count=0
+while true; do
+    clear
+    cat << "EOF"
+  _____  _____   _____          __  __  ______  _____  
+ / ____||  __ \ / ____|   /\   |  \/  ||  ____||  __ \ 
+| (___  | |  | | |  __   /  \  | \  / || |__   | |__) |
+ \___ \ | |  | | | |_ | / /\ \ | |\/| ||  __|  |  _  / 
+ ____) || |__| | |__| |/ ____ \| |  | || |____ | | \ \ 
+|_____/ |_____/ \_____/_/    \_\_|  |_||______||_|  \_\
 
-for index in "${to_install[@]}"; do
-    name="${BLUEPRINT_NAMES[$index]}"
-    url="${BLUEPRINT_URLS[$index]}"
+=======================================================
+         Pterodactyl Addon & Blueprint Installer
+=======================================================
+EOF
 
-    # Crucial: Skip if already installed
-    if grep -Fxq "$name" "$TRACKING_FILE"; then
-        echo -e "\n\e[33m[Skip] Extension '$name' is already installed.\e[0m"
+    echo -e "\n----------------------------------------"
+    echo -e " \e[1mAvailable Options (A-Z):\e[0m"
+    echo "----------------------------------------"
+    
+    # Display Options
+    count=1
+    for opt in "${SORTED_OPTIONS[@]}"; do
+        disp_name=$(echo "$opt" | cut -d'|' -f1)
+        echo -e "\e[32m$count.\e[0m $disp_name"
+        ((count++))
+    done
+    echo "----------------------------------------"
+    echo -e "\e[33mR.\e[0m Refresh List (Fetch New Extensions)"
+    echo -e "\e[31m0.\e[0m Exit"
+    echo "----------------------------------------"
+
+    read -p "Enter your choice: " choice
+
+    # Exit Option
+    if [[ "$choice" == "0" ]]; then
+        echo -e "\n\e[36mExiting... Have a great day!\e[0m"
+        exit 0
+    fi
+
+    # Refresh Option
+    if [[ "${choice,,}" == "r" ]]; then
+        fetch_and_prepare_list
         continue
     fi
 
-    echo -e "\n----------------------------------------"
-    echo -e "\e[36m[*] Downloading $name...\e[0m"
-    wget -qO "$name" "$url"
+    # Validation: Check if input is a valid number
+    if ! [[ "$choice" =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -ge "$count" ]; then
+        echo -e "\n\e[31m[Invalid Input] Please enter a valid number or 'R' to refresh.\e[0m"
+        sleep 2
+        continue
+    fi
+
+    # Process Selection
+    selected_index=$((choice-1))
+    selected_data="${SORTED_OPTIONS[$selected_index]}"
     
-    if [ $? -eq 0 ]; then
-        echo -e "\e[36m[*] Installing $name via Blueprint...\e[0m"
+    # Extract data from the selected string
+    opt_name=$(echo "$selected_data" | cut -d'|' -f1)
+    opt_type=$(echo "$selected_data" | cut -d'|' -f2)
+    opt_target=$(echo "$selected_data" | cut -d'|' -f3)
+    opt_filename=$(echo "$selected_data" | cut -d'|' -f4)
+
+    echo -e "\n\e[36m[*] You selected: $opt_name\e[0m"
+    echo "========================================"
+
+    if [[ "$opt_type" == "script" ]]; then
+        # Run standard bash script
+        eval "$opt_target"
         
-        # Run standard blueprint installation
-        blueprint -install "$name"
+    elif [[ "$opt_type" == "blueprint" ]]; then
+        # Install Blueprint
+        cd "$PTERODACTYL_DIR" || exit 1
+        echo -e "\e[36m[*] Downloading $opt_filename...\e[0m"
+        wget -qO "$opt_filename" "$opt_target"
         
         if [ $? -eq 0 ]; then
-            echo -e "\e[32m[Success] Installed $name.\e[0m"
-            # Log as installed
-            echo "$name" >> "$TRACKING_FILE"
-            installed_count=$((installed_count+1))
+            echo -e "\e[36m[*] Installing $opt_filename via Blueprint...\e[0m"
+            blueprint -install "$opt_filename"
+            
+            # Clean up the downloaded file
+            rm -f "$opt_filename"
+            echo -e "\n\e[32m[Success] $opt_name installed successfully.\e[0m"
         else
-            echo -e "\e[31m[Error] Blueprint installation failed for $name.\e[0m"
+            echo -e "\e[31m[Error] Failed to download $opt_filename.\e[0m"
         fi
-        
-        # Clean up downloaded zip/.blueprint file after install
-        rm -f "$name"
-    else
-        echo -e "\e[31m[Error] Failed to download $name.\e[0m"
     fi
+
+    echo "========================================"
+    read -p "Press Enter to return to the menu..." 
 done
 
-# ==========================================
-# Post-Installation
-# ==========================================
-if [ "$installed_count" -gt 0 ]; then
-    echo -e "\n======================================================="
-    echo -e "\e[32m Successfully installed $installed_count new extension(s)!\e[0m"
-    echo "======================================================="
-    echo -e "\e[33mTo apply these changes to your panel, Blueprint needs to rebuild.\e[0m"
-    read -p "Do you want to run 'blueprint -build' now? (y/n): " build_choice
-    
-    if [[ "${build_choice,,}" == "y" ]]; then
-        echo -e "\e[36m[*] Running blueprint -build...\e[0m"
-        blueprint -build
-    fi
-else
-    echo -e "\n\e[33m[Info] No new extensions were installed.\e[0m"
-fi
