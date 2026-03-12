@@ -47,6 +47,7 @@ fetch_and_prepare_list() {
     # 1. Add Custom Script Options
     ALL_OPTIONS+=("Plugin Manager Addon|script|bash <(curl -s 'https://raw.githubusercontent.com/sdgamer8263-sketch/EXD/main/Plugin%20Manager%20Addon.sh')|none")
     ALL_OPTIONS+=("Pterodactyl Region|script|bash <(curl -s https://exeyarikus.info/pterodactyl-region/install)|none")
+    ALL_OPTIONS+=("SAGA Auto Suspension v1|script|bash <(curl -s https://raw.githubusercontent.com/sdgamer8263-sketch/EXD/main/ac.sh)|none")
     ALL_OPTIONS+=("SFTP Alias|script|bash <(curl -s https://raw.githubusercontent.com/sdgamer8263-sketch/EXD/main/sftp/sftp.sh)|none")
 
     # 2. Fetch and format .blueprint files
@@ -165,4 +166,3 @@ EOF
     echo "========================================"
     read -p "Press Enter to return to the menu..." 
 done
-
