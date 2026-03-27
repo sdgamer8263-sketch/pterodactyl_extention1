@@ -3,7 +3,7 @@
 # ==========================================
 # GITHUB TOKEN (Secret Scanner Bypass)
 # ==========================================
-# টোকেনটিকে দুই ভাগে ভাগ করা হয়েছে যাতে গিটহাব ধরতে না পারে।
+# The token is split into two parts to prevent GitHub from detecting it.
 T_P1="ghp_"
 T_P2="DXBtIOKebPHDwEQ3u9PyCthuYJ9hcV0FvmsD"
 GITHUB_TOKEN="${T_P1}${T_P2}"
@@ -46,7 +46,7 @@ fi
 fetch_and_prepare_list() {
     echo -e "\n\e[36m[*] Fetching available extensions from GitHub...\e[0m"
     
-    # টোকেন দিয়ে API রিকোয়েস্ট (লিমিট বাড়ানোর জন্য)
+    # API request using token (to increase rate limit)
     if [ -n "$GITHUB_TOKEN" ]; then
         FILES_JSON_EX=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API_URL_EX")
         FILES_JSON_TR=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API_URL_TR")
@@ -117,27 +117,38 @@ while true; do
  ____) || |__| | |__| |/ ____ \| |  | || |____ | | \ \ 
 |_____/ |_____/ \_____/_/    \_\_|  |_||______||_|  \_\
 
-=======================================================
-         Pterodactyl Addon & Blueprint Installer
-=======================================================
+================================================================================
+                    Blueprint Extention V26.1)
+================================================================================
 EOF
 
-    echo -e "\n----------------------------------------"
+    echo -e "\n--------------------------------------------------------------------------------"
     echo -e " \e[1mAvailable Options (A-Z):\e[0m"
-    echo "----------------------------------------"
+    echo "--------------------------------------------------------------------------------"
     
-    # Display Options
+    # Display Options in 3 Columns
     count=1
+    total_options=${#SORTED_OPTIONS[@]}
+    
     for opt in "${SORTED_OPTIONS[@]}"; do
         disp_name=$(echo "$opt" | cut -d'|' -f1)
-        # Display name with a simple format
-        printf " \e[32m%02d.\e[0m %s\n" "$count" "$disp_name"
+        
+        # Format output into fixed widths (approx 24 chars max per column name)
+        # Using printf magic to align into 3 columns dynamically
+        printf " \e[32m%02d.\e[0m %-23s " "$count" "${disp_name:0:23}"
+        
+        # Break to a new line every 3 items, or at the end of the list
+        if (( count % 3 == 0 )) || (( count == total_options )); then
+            echo ""
+        fi
+        
         ((count++))
     done
-    echo "----------------------------------------"
+    
+    echo "--------------------------------------------------------------------------------"
     echo -e " \e[33m R.\e[0m Refresh List (Fetch New Extensions)"
     echo -e " \e[31m 0.\e[0m Exit"
-    echo "----------------------------------------"
+    echo "--------------------------------------------------------------------------------"
 
     echo -n -e "\e[1mEnter your choice (0-$((count-1)), or R):\e[0m "
     read choice
