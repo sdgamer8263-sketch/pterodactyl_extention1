@@ -1,16 +1,33 @@
 #!/bin/bash
 
 # ==========================================
-# GITHUB TOKEN (Secret Scanner Bypass)
+# Terminal Colors & UI Elements
 # ==========================================
-# The token is split into two parts to prevent GitHub from detecting it.
-T_P1="ghp_"
-T_P2="DXBtIOKebPHDwEQ3u9PyCthuYJ9hcV0FvmsD"
-GITHUB_TOKEN="${T_P1}${T_P2}"
+RED='\033[1;31m'
+GREEN='\033[1;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[1;34m'
+CYAN='\033[1;36m'
+MAGENTA='\033[1;35m'
+WHITE='\033[1;37m'
+RESET='\033[0m'
+BOLD='\033[1m'
+
+# Modern Emoji Status Indicators
+INFO="${CYAN}💡 [INFO]${RESET}"
+SUCCESS="${GREEN}✅ [SUCCESS]${RESET}"
+ERROR="${RED}❌ [ERROR]${RESET}"
+WARN="${YELLOW}⚠️ [WARNING]${RESET}"
+LOADING="${MAGENTA}⏳ [WORKING]${RESET}"
 
 # ==========================================
-# Configuration
+# Configuration 
 # ==========================================
+# ⚠️ REMEMBER TO USE A NEW, SECURE TOKEN!
+T_P1="ghp_"
+T_P2="YOUR_NEW_TOKEN_HERE" 
+GITHUB_TOKEN="${T_P1}${T_P2}"
+
 GITHUB_REPO="sdgamer8263-sketch/pterodactyl_extention1"
 BRANCH="main"
 API_URL_EX="https://api.github.com/repos/${GITHUB_REPO}/contents/ex?ref=${BRANCH}"
@@ -20,34 +37,36 @@ PTERODACTYL_DIR="/var/www/pterodactyl"
 # ==========================================
 # Pre-flight Checks
 # ==========================================
+clear
+echo -e "${CYAN}${BOLD}🚀 Initializing SKA HOST Environment...${RESET}\n"
+
 if [[ $EUID -ne 0 ]]; then
-   echo -e "\e[31m[Error] This script must be run as root.\e[0m" 
+   echo -e "${ERROR} ${RED}This script must be run as root. Please use sudo.${RESET}" 
    exit 1
 fi
 
 if [ ! -d "$PTERODACTYL_DIR" ]; then
-    echo -e "\e[31m[Error] Pterodactyl directory ($PTERODACTYL_DIR) not found.\e[0m"
+    echo -e "${ERROR} ${RED}Pterodactyl directory ($PTERODACTYL_DIR) not found.${RESET}"
     exit 1
 fi
 
 if ! command -v jq &> /dev/null; then
-    echo -e "\e[33m[Info] 'jq' is not installed. Installing it now...\e[0m"
-    apt-get update -y -q && apt-get install -y jq -q
+    echo -e "${WARN} ${YELLOW}'jq' is missing. Installing it now... ⚙️${RESET}"
+    apt-get update -y -q > /dev/null 2>&1 && apt-get install -y jq -q > /dev/null 2>&1
 fi
 
 if ! command -v unzip &> /dev/null; then
-    echo -e "\e[33m[Info] 'unzip' is not installed. Installing it now...\e[0m"
-    apt-get update -y -q && apt-get install -y unzip -q
+    echo -e "${WARN} ${YELLOW}'unzip' is missing. Installing it now... 📦${RESET}"
+    apt-get update -y -q > /dev/null 2>&1 && apt-get install -y unzip -q > /dev/null 2>&1
 fi
 
 # ==========================================
 # Function: Fetch & Prepare List
 # ==========================================
 fetch_and_prepare_list() {
-    echo -e "\n\e[36m[*] Fetching available extensions from GitHub...\e[0m"
+    echo -e "\n${INFO} ${CYAN}Fetching available extensions from the cloud... ☁️${RESET}"
     
-    # API request using token (to increase rate limit)
-    if [ -n "$GITHUB_TOKEN" ]; then
+    if [ -n "$GITHUB_TOKEN" ] && [ "$GITHUB_TOKEN" != "ghp_YOUR_NEW_TOKEN_HERE" ]; then
         FILES_JSON_EX=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API_URL_EX")
         FILES_JSON_TR=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API_URL_TR")
     else
@@ -56,52 +75,48 @@ fetch_and_prepare_list() {
     fi
 
     if echo "$FILES_JSON_EX" | grep -q '"message":' || echo "$FILES_JSON_TR" | grep -q '"message":'; then
-        echo -e "\e[31m[Error] Failed to fetch from GitHub API. Check repo details or API limits.\e[0m"
+        echo -e "${ERROR} ${RED}Failed to fetch from GitHub API. Check repo details. 🛑${RESET}"
         sleep 2
         return
     fi
 
-    # Reset Arrays
     ALL_OPTIONS=()
     SORTED_OPTIONS=()
 
-    # 1. Add Custom Script Options (Hardcoded)
+    # 1. Add Custom Script Options (Prefix with Script emoji for later)
     ALL_OPTIONS+=("Plugin Manager Addon|script|bash <(curl -s 'https://raw.githubusercontent.com/sdgamer8263-sketch/EXD/main/Plugin%20Manager%20Addon.sh')|none")
     ALL_OPTIONS+=("Pterodactyl Region|script|bash <(curl -s https://exeyarikus.info/pterodactyl-region/install)|none")
-    ALL_OPTIONS+=("SAGA Auto Suspension v1|script|bash <(curl -s https://raw.githubusercontent.com/sdgamer8263-sketch/EXD/main/ac.sh)|none")
+    ALL_OPTIONS+=("SAGA Auto Suspension|script|bash <(curl -s https://raw.githubusercontent.com/sdgamer8263-sketch/EXD/main/ac.sh)|none")
    
-    # 2. Fetch and format .blueprint files from 'ex' folder
+    # 2. Fetch .blueprint files
     if echo "$FILES_JSON_EX" | grep -q '"name":'; then
         while IFS= read -r line; do
             raw_name=$(echo "$line" | cut -d'|' -f1)
             url=$(echo "$line" | cut -d'|' -f2)
-            
             clean_name="${raw_name%.blueprint}"
-            clean_name="${clean_name^}" # Capitalize first letter
-            
+            clean_name="${clean_name^}"
             ALL_OPTIONS+=("$clean_name|blueprint|$url|$raw_name")
         done < <(echo "$FILES_JSON_EX" | jq -r '.[] | select(.name | endswith(".blueprint")) | "\(.name)|\(.download_url)"')
     fi
 
-    # 3. Fetch and format .zip files from 'Tr' folder
+    # 3. Fetch .zip files
     if echo "$FILES_JSON_TR" | grep -q '"name":'; then
         while IFS= read -r line; do
             raw_name=$(echo "$line" | cut -d'|' -f1)
             url=$(echo "$line" | cut -d'|' -f2)
-            
             clean_name="${raw_name%.zip}"
-            clean_name="${clean_name^}" # Capitalize first letter
-            
+            clean_name="${clean_name^}"
             ALL_OPTIONS+=("$clean_name|zip|$url|$raw_name")
         done < <(echo "$FILES_JSON_TR" | jq -r '.[] | select(.name | endswith(".zip")) | "\(.name)|\(.download_url)"')
     fi
 
-    # 4. Sort all options alphabetically (A-Z) ignoring case
     IFS=$'\n' SORTED_OPTIONS=($(sort -f <<<"${ALL_OPTIONS[*]}"))
     unset IFS
+    
+    echo -e "${SUCCESS} ${GREEN}Extensions loaded successfully! 🎉${RESET}"
+    sleep 1
 }
 
-# Initial Fetch
 fetch_and_prepare_list
 
 # ==========================================
@@ -109,155 +124,152 @@ fetch_and_prepare_list
 # ==========================================
 while true; do
     clear
+    echo -e "${MAGENTA}${BOLD}"
     cat << "EOF"
-  _____  _____   _____          __  __  ______  _____  
- / ____||  __ \ / ____|   /\   |  \/  ||  ____||  __ \ 
-| (___  | |  | | |  __   /  \  | \  / || |__   | |__) |
- \___ \ | |  | | | |_ | / /\ \ | |\/| ||  __|  |  _  / 
- ____) || |__| | |__| |/ ____ \| |  | || |____ | | \ \ 
-|_____/ |_____/ \_____/_/    \_\_|  |_||______||_|  \_\
-
-================================================================================
-                    Blueprint Extention (V26.1)
-================================================================================
+   _____ _  __    _      _    _  ____   _____ _______ 
+  / ____| |/ /   / \    | |  | |/ __ \ / ____|__   __|
+ | (___ | ' /   / _ \   | |__| | |  | | (___    | |   
+  \___ \|  <   / ___ \  |  __  | |  | |\___ \   | |   
+  ____) | . \ / /   \ \ | |  | | |__| |____) |  | |   
+ |_____/|_|\_/_/     \_\|_|  |_|\____/|_____/   |_|   
 EOF
-
-    echo -e "\n--------------------------------------------------------------------------------"
-    echo -e " \e[1mAvailable Options (A-Z):\e[0m"
-    echo "--------------------------------------------------------------------------------"
+    echo -e "${RESET}"
     
-    # Display Options in 3 Columns
+    # Premium Header Box with modern rounded borders
+    echo -e "${CYAN}╭──────────────────────────────────────────────────────────────────────────────╮${RESET}"
+    echo -e "${CYAN}│${RESET}                🚀 ${MAGENTA}${BOLD}SKA HOST (SDGAMER) - Panel Installer${RESET} 🚀               ${CYAN}│${RESET}"
+    echo -e "${CYAN}├──────────────────────────────────────────────────────────────────────────────┤${RESET}"
+    echo -e "${CYAN}│${RESET} ✨ ${WHITE}Select an extension to install:${RESET}                                        ${CYAN}│${RESET}"
+    echo -e "${CYAN}├──────────────────────────────────────────────────────────────────────────────┤${RESET}"
+    
+    # Display Options in 2 Columns
     count=1
     total_options=${#SORTED_OPTIONS[@]}
     
     for opt in "${SORTED_OPTIONS[@]}"; do
         disp_name=$(echo "$opt" | cut -d'|' -f1)
+        opt_type=$(echo "$opt" | cut -d'|' -f2)
         
-        # Format output into fixed widths (approx 24 chars max per column name)
-        # Using printf magic to align into 3 columns dynamically
-        printf " \e[32m%02d.\e[0m %-23s " "$count" "${disp_name:0:23}"
+        # Decide which emoji to show based on type
+        if [[ "$opt_type" == "script" ]]; then
+            icon="⚙️ "
+        else
+            icon="🧩"
+        fi
         
-        # Break to a new line every 3 items, or at the end of the list
-        if (( count % 3 == 0 )) || (( count == total_options )); then
-            echo ""
+        # Using 28 characters max width for names to accommodate emojis and spacing
+        printf "${CYAN}│${RESET}  ${GREEN}%02d.${RESET} $icon ${WHITE}%-28s${RESET} " "$count" "${disp_name:0:28}"
+        
+        if (( count % 2 == 0 )); then
+            # End of second column, close the box line
+            echo -e "${CYAN}│${RESET}"
+        elif (( count == total_options )); then
+            # If total items are odd and this is the last item, pad the empty space
+            printf "%-39s${CYAN}│${RESET}\n" " "
         fi
         
         ((count++))
     done
     
-    echo "--------------------------------------------------------------------------------"
-    echo -e " \e[33m R.\e[0m Refresh List (Fetch New Extensions)"
-    echo -e " \e[31m 0.\e[0m Exit"
-    echo "--------------------------------------------------------------------------------"
+    # Premium Footer Box
+    echo -e "${CYAN}├──────────────────────────────────────────────────────────────────────────────┤${RESET}"
+    echo -e "${CYAN}│${RESET}  ${YELLOW}🔄 R.${RESET} ${WHITE}Refresh Catalog${RESET}                       ${RED}🛑 0.${RESET} ${WHITE}Exit Installer${RESET}          ${CYAN}│${RESET}"
+    echo -e "${CYAN}╰──────────────────────────────────────────────────────────────────────────────╯${RESET}"
 
-    echo -n -e "\e[1mEnter your choice (0-$((count-1)), or R):\e[0m "
+    echo -n -e "\n${BOLD}${MAGENTA}  👉 Enter your choice [0-$((count-1)), R]: ${RESET}"
     read choice
 
-    # Exit Option
     if [[ "$choice" == "0" || "$choice" == "00" ]]; then
-        echo -e "\n\e[36mExiting... Have a great day!\e[0m"
+        echo -e "\n${SUCCESS} ${GREEN}Exiting SKA HOST Installer. Have a great day! 👋${RESET}\n"
         exit 0
     fi
 
-    # Refresh Option
     if [[ "${choice,,}" == "r" ]]; then
         fetch_and_prepare_list
         continue
     fi
 
-    # Validation: Check if input is a valid number
     if ! [[ "$choice" =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -ge "$count" ]; then
-        echo -e "\n\e[31m[Invalid Input] Please enter a valid number or 'R' to refresh.\e[0m"
+        echo -e "\n${ERROR} ${RED}Invalid Selection! Please enter a valid number or 'R'. 🚫${RESET}"
         sleep 2
         continue
     fi
 
-    # Process Selection
     selected_index=$((choice-1))
     selected_data="${SORTED_OPTIONS[$selected_index]}"
     
-    # Extract data from the selected string
     opt_name=$(echo "$selected_data" | cut -d'|' -f1)
     opt_type=$(echo "$selected_data" | cut -d'|' -f2)
     opt_target=$(echo "$selected_data" | cut -d'|' -f3)
     opt_filename=$(echo "$selected_data" | cut -d'|' -f4)
 
-    echo -e "\n\e[36m[*] You selected: $opt_name\e[0m"
-    echo "========================================"
+    echo -e "\n${CYAN}────────────────────────────────────────────────────────────────────────────────${RESET}"
+    echo -e "${INFO} ${WHITE}Selected Module: ${BOLD}${YELLOW}$opt_name${RESET} 🎯"
+    echo -e "${CYAN}────────────────────────────────────────────────────────────────────────────────${RESET}"
 
     if [[ "$opt_type" == "script" ]]; then
-        # Run standard bash script
+        echo -e "${LOADING} ${CYAN}Executing external script... ⚙️${RESET}"
         eval "$opt_target"
         
     elif [[ "$opt_type" == "blueprint" ]]; then
-        # Install Blueprint
         cd "$PTERODACTYL_DIR" || exit 1
-        echo -e "\e[36m[*] Downloading $opt_filename...\e[0m"
+        echo -e "${LOADING} ${CYAN}Downloading blueprint: ${WHITE}$opt_filename${RESET} 📥"
         wget -qO "$opt_filename" "$opt_target"
         
         if [ $? -eq 0 ]; then
-            echo -e "\e[36m[*] Installing $opt_filename via Blueprint...\e[0m"
+            echo -e "${LOADING} ${CYAN}Installing via Blueprint core... 🛠️${RESET}"
             blueprint -install "${opt_filename%.blueprint}"
-            
-            # Clean up the downloaded file
             rm -f "$opt_filename"
-            echo -e "\n\e[32m[Success] $opt_name Blueprint installed successfully.\e[0m"
+            echo -e "\n${SUCCESS} ${GREEN}$opt_name Blueprint installed successfully! 🎉${RESET}"
         else
-            echo -e "\e[31m[Error] Failed to download $opt_filename.\e[0m"
+            echo -e "${ERROR} ${RED}Failed to download $opt_filename. ❌${RESET}"
         fi
 
     elif [[ "$opt_type" == "zip" ]]; then
-        # Install Zip file from Tr folder (UPDATED WITH BLUEPRINT CHECK)
-        echo -e "\e[36m[*] Preparing installation for $opt_name...\e[0m"
-        
+        echo -e "${LOADING} ${CYAN}Preparing workspace for $opt_name... 🧹${RESET}"
         TEMP_DIR=$(mktemp -d)
         cd "$TEMP_DIR" || exit 1
         
-        echo -e "\e[36m[*] Downloading $opt_filename...\e[0m"
+        echo -e "${LOADING} ${CYAN}Downloading package... 📥${RESET}"
         wget -qO "$opt_filename" "$opt_target"
         
         if [ $? -eq 0 ]; then
-            echo -e "\e[36m[*] Extracting $opt_filename...\e[0m"
+            echo -e "${LOADING} ${CYAN}Extracting files... 📦${RESET}"
             unzip -oq "$opt_filename"
             
-            # Check if a .blueprint file exists inside the extracted zip
             BP_FILE=$(find . -name "*.blueprint" | head -n 1)
             
             if [ -n "$BP_FILE" ]; then
-                echo -e "\e[36m[*] Found blueprint file inside zip: $BP_FILE\e[0m"
-                # Move blueprint file to pterodactyl dir
+                echo -e "${SUCCESS} ${GREEN}Found embedded blueprint: ${WHITE}$BP_FILE${RESET} 🔍"
                 mv "$BP_FILE" "$PTERODACTYL_DIR/"
                 cd "$PTERODACTYL_DIR" || exit 1
                 
                 BP_BASENAME=$(basename "$BP_FILE")
-                echo -e "\e[36m[*] Installing $BP_BASENAME via Blueprint...\e[0m"
+                echo -e "${LOADING} ${CYAN}Installing via Blueprint... 🛠️${RESET}"
                 blueprint -install "${BP_BASENAME%.blueprint}"
-                
                 rm -f "$BP_BASENAME"
-                echo -e "\n\e[32m[Success] $opt_name Blueprint installed successfully.\e[0m"
+                echo -e "\n${SUCCESS} ${GREEN}$opt_name installed successfully! 🎉${RESET}"
             else
-                echo -e "\e[36m[*] No .blueprint file found. Installing as manual addon...\e[0m"
-                # If no blueprint file, copy contents as usual
+                echo -e "${WARN} ${YELLOW}No blueprint found. Starting manual integration... 🔧${RESET}"
                 cp -rfT . "$PTERODACTYL_DIR"
                 cd "$PTERODACTYL_DIR" || exit 1
                 
-                echo -e "\e[36m[*] Installing node modules and building panel assets (This may take a while)....\e[0m"
+                echo -e "${LOADING} ${CYAN}Building panel assets (This might take a moment) ☕...${RESET}"
                 export NODE_OPTIONS=--openssl-legacy-provider
                 yarn install > /dev/null 2>&1
                 yarn build:production
                 php artisan optimize:clear
                 
-                echo -e "\n\e[32m[Success] $opt_name extension installed manually.\e[0m"
+                echo -e "\n${SUCCESS} ${GREEN}$opt_name manual addon installed successfully! 🎉${RESET}"
             fi
         else
-            echo -e "\e[31m[Error] Failed to download $opt_filename.\e[0m"
+            echo -e "${ERROR} ${RED}Failed to download package. ❌${RESET}"
             cd "$PTERODACTYL_DIR" || exit 1
         fi
-        
-        # Cleanup temp directory
         rm -rf "$TEMP_DIR"
     fi
 
-    echo "========================================"
-    read -p "Press Enter to return to the menu..." 
+    echo -e "${CYAN}────────────────────────────────────────────────────────────────────────────────${RESET}"
+    echo -n -e "${BOLD}${YELLOW}  👉 Press ENTER to return to the main menu...${RESET}" 
+    read
 done
