@@ -207,7 +207,7 @@ EOF
         fi
 
     elif [[ "$opt_type" == "zip" ]]; then
-        # Install Zip file from Tr folder
+        # Install Zip file from Tr folder (UPDATED WITH BLUEPRINT CHECK)
         echo -e "\e[36m[*] Preparing installation for $opt_name...\e[0m"
         
         TEMP_DIR=$(mktemp -d)
@@ -220,20 +220,38 @@ EOF
             echo -e "\e[36m[*] Extracting $opt_filename...\e[0m"
             unzip -oq "$opt_filename"
             
-            echo -e "\e[36m[*] Copying files to Pterodactyl directory...\e[0m"
-            cp -rfT . "$PTERODACTYL_DIR"
+            # Check if a .blueprint file exists inside the extracted zip
+            BP_FILE=$(find . -name "*.blueprint" | head -n 1)
             
-            cd "$PTERODACTYL_DIR" || exit 1
-            
-            echo -e "\e[36m[*] Installing node modules and building panel assets (This may take a while)...\e[0m"
-            export NODE_OPTIONS=--openssl-legacy-provider
-            yarn install > /dev/null 2>&1
-            yarn build:production
-            php artisan optimize:clear
-            
-            echo -e "\n\e[32m[Success] $opt_name extension installed successfully.\e[0m"
+            if [ -n "$BP_FILE" ]; then
+                echo -e "\e[36m[*] Found blueprint file inside zip: $BP_FILE\e[0m"
+                # Move blueprint file to pterodactyl dir
+                mv "$BP_FILE" "$PTERODACTYL_DIR/"
+                cd "$PTERODACTYL_DIR" || exit 1
+                
+                BP_BASENAME=$(basename "$BP_FILE")
+                echo -e "\e[36m[*] Installing $BP_BASENAME via Blueprint...\e[0m"
+                blueprint -install "${BP_BASENAME%.blueprint}"
+                
+                rm -f "$BP_BASENAME"
+                echo -e "\n\e[32m[Success] $opt_name Blueprint installed successfully.\e[0m"
+            else
+                echo -e "\e[36m[*] No .blueprint file found. Installing as manual addon...\e[0m"
+                # If no blueprint file, copy contents as usual
+                cp -rfT . "$PTERODACTYL_DIR"
+                cd "$PTERODACTYL_DIR" || exit 1
+                
+                echo -e "\e[36m[*] Installing node modules and building panel assets (This may take a while)....\e[0m"
+                export NODE_OPTIONS=--openssl-legacy-provider
+                yarn install > /dev/null 2>&1
+                yarn build:production
+                php artisan optimize:clear
+                
+                echo -e "\n\e[32m[Success] $opt_name extension installed manually.\e[0m"
+            fi
         else
             echo -e "\e[31m[Error] Failed to download $opt_filename.\e[0m"
+            cd "$PTERODACTYL_DIR" || exit 1
         fi
         
         # Cleanup temp directory
