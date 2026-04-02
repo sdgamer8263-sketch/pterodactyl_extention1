@@ -68,13 +68,13 @@ fetch_and_prepare_list() {
     
     if [ -n "$GITHUB_TOKEN" ] && [ "$GITHUB_TOKEN" != "ghp_YOUR_NEW_TOKEN_HERE" ]; then
         FILES_JSON_EX=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API_URL_EX")
-        FILES_JSON_TR=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API_URL_TR")
+        FILES_JSON_TR=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API_URL_TRR")
     else
         FILES_JSON_EX=$(curl -s "$API_URL_EX")
         FILES_JSON_TR=$(curl -s "$API_URL_TR")
     fi
 
-    if echo "$FILES_JSON_EX" | grep -q '"message":' || echo "$FILES_JSON_TR" | grep -q '"message":'; then
+    if echo "$FILES_JSON_EX" | grep -q '"message":' || echo "$FILES_JSON_TRR" | grep -q '"message":'; then
         echo -e "${ERROR} ${RED}Failed to fetch from GitHub API. Check repo details. 🛑${RESET}"
         sleep 2
         return
