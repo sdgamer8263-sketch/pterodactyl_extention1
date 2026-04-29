@@ -31,7 +31,7 @@ GITHUB_TOKEN="${T_P1}${T_P2}"
 GITHUB_REPO="sdgamer8263-sketch/pterodactyl_extention1"
 BRANCH="main"
 API_URL_EX="https://api.github.com/repos/${GITHUB_REPO}/contents/ex?ref=${BRANCH}"
-API_URL_TR="https://api.github.com/repos/${GITHUB_REPO}/contents/Trr?ref=${BRANCH}"
+API_URL_TR="https://api.github.com/repos/${GITHUB_REPO}/contents/Tr?ref=${BRANCH}"
 PTERODACTYL_DIR="/var/www/pterodactyl"
 
 # ==========================================
