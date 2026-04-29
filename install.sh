@@ -68,7 +68,7 @@ fetch_and_prepare_list() {
     
     if [ -n "$GITHUB_TOKEN" ] && [ "$GITHUB_TOKEN" != "ghp_YOUR_NEW_TOKEN_HERE" ]; then
         FILES_JSON_EX=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API_URL_EX")
-        FILES_JSON_TR=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API_URL_TRR")
+        FILES_JSON_TR=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API_URL_TR")
     else
         FILES_JSON_EX=$(curl -s "$API_URL_EX")
         FILES_JSON_TR=$(curl -s "$API_URL_TR")
