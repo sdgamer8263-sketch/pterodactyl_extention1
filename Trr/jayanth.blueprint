@@ -1,0 +1,35 @@
+name: Jayanth Plugin Manager
+identifier: jayanthplugins
+version: 1.0.0
+author: SDGAMER
+description: Advanced SpigotMC Plugin Manager with Glassmorphism UI.
+website: https://github.com/sdgamer8263-sketch
+
+files:
+  - app/Http/Controllers/Server/PluginManagerController.php: app/Http/Controllers/Server/PluginManagerController.php
+  - resources/scripts/components/server/PluginManagerContainer.tsx: resources/scripts/components/server/PluginManagerContainer.tsx
+
+requests:
+  - file: resources/scripts/components/server/ServerConsole.tsx
+    type: find_and_append
+    search: <NavLink to={`/server/${id}/settings`}>Settings</NavLink>
+    replace: |
+      <NavLink to={`/server/${id}/plugins`}>Plugins</NavLink>
+
+  - file: resources/scripts/routers/ServerRouter.tsx
+    type: find_and_append
+    search: "import SettingsContainer from '@/components/server/settings/SettingsContainer';"
+    replace: "import PluginManagerContainer from '@/components/server/PluginManagerContainer';"
+
+  - file: resources/scripts/routers/ServerRouter.tsx
+    type: find_and_append
+    search: <Route path={`${match.path}/settings`} component={SettingsContainer} exact />
+    replace: |
+      <Route path={`${match.path}/plugins`} component={PluginManagerContainer} exact />
+
+  - file: routes/server.php
+    type: find_and_append
+    search: "Route::get('/settings', 'SettingsController@index')->name('server.settings');"
+    replace: |
+      Route::get('/plugins', 'PluginManagerController@index')->name('server.plugins');
+      Route::get('/plugins/search', 'PluginManagerController@search')->name('server.plugins.search');
