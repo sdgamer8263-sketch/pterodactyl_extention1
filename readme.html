@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arix Theme - Installation Tutorial</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-color: #08090c;
+            --card-bg: rgba(17, 19, 24, 0.7);
+            --border-color: rgba(255, 255, 255, 0.06);
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --accent-purple: #8b5cf6;
+            --accent-cyan: #06b6d4;
+            --terminal-bg: #0f1115;
+            --success-color: #10b981;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: 'Outfit', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Animated Glowing Circles in the background */
+        .ambient-glow-1 {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, rgba(0,0,0,0) 70%);
+            top: -100px;
+            right: -100px;
+            z-index: -1;
+            filter: blur(60px);
+            pointer-events: none;
+        }
+
+        .ambient-glow-2 {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(6, 182, 212, 0.1) 0%, rgba(0,0,0,0) 70%);
+            bottom: 10%;
+            left: -200px;
+            z-index: -1;
+            filter: blur(80px);
+            pointer-events: none;
+        }
+
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 3rem 1.5rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 2.5rem;
+        }
+
+        /* Header Style */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+        }
+
+        .logo-section h1 {
+            font-size: 2.25rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #fff 40%, var(--text-secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-section h1 i {
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-section p {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            margin-top: 0.35rem;
+        }
+
+        .author-badge {
+            background: rgba(6, 182, 212, 0.08);
+            border: 1px solid rgba(6, 182, 212, 0.2);
+            padding: 0.6rem 1.2rem;
+            border-radius: 50px;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-primary);
+            text-decoration: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .author-badge:hover {
+            background: rgba(6, 182, 212, 0.15);
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.2);
+            transform: translateY(-2px);
+        }
+
+        /* Overview Alert Card */
+        .info-card {
+            background: rgba(139, 92, 246, 0.04);
+            border: 1px solid rgba(139, 92, 246, 0.15);
+            border-left: 4px solid var(--accent-purple);
+            padding: 1.25rem 1.5rem;
+            border-radius: 12px;
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+        }
+
+        .info-card i {
+            color: var(--accent-purple);
+            font-size: 1.5rem;
+            margin-top: 0.15rem;
+        }
+
+        .info-card-content h3 {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 0.25rem;
+        }
+
+        .info-card-content p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Step Timeline */
+        .steps-container {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .step-block {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(16px);
+            border-radius: 16px;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            position: relative;
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .step-block:hover {
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .step-number {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-cyan));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: #fff;
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);
+        }
+
+        .step-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .step-description {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .step-description code {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--accent-cyan);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Terminal Code Blocks */
+        .terminal-block {
+            background-color: var(--terminal-bg);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            margin-top: 0.5rem;
+        }
+
+        .terminal-header {
+            background-color: rgba(0, 0, 0, 0.3);
+            padding: 0.6rem 1.2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .terminal-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .terminal-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .terminal-dot.red { background-color: #ef4444; }
+        .terminal-dot.yellow { background-color: #f59e0b; }
+        .terminal-dot.green { background-color: #10b981; }
+
+        .terminal-title {
+            font-size: 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-secondary);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .copy-btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-secondary);
+            padding: 0.35rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: all 0.2s ease;
+        }
+
+        .copy-btn:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .copy-btn.copied {
+            color: var(--success-color);
+            background: rgba(16, 185, 129, 0.05);
+            border-color: rgba(16, 185, 129, 0.2);
+        }
+
+        .terminal-body {
+            padding: 1.2rem;
+            margin: 0;
+            overflow-x: auto;
+        }
+
+        .terminal-body pre {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.875rem;
+            color: #e5e7eb;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        /* Footer styling */
+        footer {
+            border-top: 1px solid var(--border-color);
+            padding: 2.5rem 1.5rem;
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            background: rgba(0, 0, 0, 0.15);
+            margin-top: auto;
+        }
+
+        footer a {
+            color: var(--accent-purple);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        footer a:hover {
+            color: var(--accent-cyan);
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .container {
+                padding: 2rem 1rem;
+            }
+            .step-block {
+                padding: 1.25rem;
+            }
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+                text-align: left;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="ambient-glow-1"></div>
+    <div class="ambient-glow-2"></div>
+
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="logo-section">
+                <h1><i class="fa-solid fa-wand-magic-sparkles"></i> Arix Theme</h1>
+                <p>Simple & beautiful theme installation guide for Pterodactyl Panel</p>
+            </div>
+            <a href="https://mrbeenopro.com" target="_blank" class="author-badge">
+                <i class="fa-solid fa-code"></i>
+                <span>Made by Mrbeenopro</span>
+            </a>
+        </header>
+
+        <!-- Information/Alert Card -->
+        <div class="info-card">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <div class="info-card-content">
+                <h3>Prerequisites Check</h3>
+                <p>Ensure you have SSH access to your VPS/Server hosting the Pterodactyl Panel. Log in as <code>root</code> or a user with <code>sudo</code> privileges before starting.</p>
+            </div>
+        </div>
+
+        <!-- Installation Steps -->
+        <div class="steps-container">
+            
+            <!-- Step 1: Upload files -->
+            <div class="step-block">
+                <div class="step-header">
+                    <div class="step-number">1</div>
+                    <h2 class="step-title">Upload Theme Files</h2>
+                </div>
+                <p class="step-description">
+                    Extract your purchased Arix Theme archive and upload the files to your server. Make sure the files are placed directly in the Pterodactyl folder: <code>/var/www/pterodactyl</code>.
+                </p>
+            </div>
+
+            <!-- Step 2: System Dependencies -->
+            <div class="step-block">
+                <div class="step-header">
+                    <div class="step-number">2</div>
+                    <h2 class="step-title">Install System Dependencies</h2>
+                </div>
+                <p class="step-description">
+                    Update your local package lists and install the common system-level utility tools required for compiling and linking files.
+                </p>
+                <div class="terminal-block">
+                    <div class="terminal-header">
+                        <div class="terminal-dots">
+                            <span class="terminal-dot red"></span>
+                            <span class="terminal-dot yellow"></span>
+                            <span class="terminal-dot green"></span>
+                        </div>
+                        <span class="terminal-title">Bash Terminal</span>
+                        <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> Copy</button>
+                    </div>
+                    <div class="terminal-body">
+                        <pre>sudo apt update && sudo apt install -y ca-certificates curl git gnupg unzip wget zip</pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Node.js Repository -->
+            <div class="step-block">
+                <div class="step-header">
+                    <div class="step-number">3</div>
+                    <h2 class="step-title">Add Node.js v22 Repository & Install</h2>
+                </div>
+                <p class="step-description">
+                    Arix Theme compilation requires Node.js. Add the official NodeSource APT repository for Node.js 22.x and install it on the system.
+                </p>
+                <div class="terminal-block">
+                    <div class="terminal-header">
+                        <div class="terminal-dots">
+                            <span class="terminal-dot red"></span>
+                            <span class="terminal-dot yellow"></span>
+                            <span class="terminal-dot green"></span>
+                        </div>
+                        <span class="terminal-title">Bash Terminal</span>
+                        <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> Copy</button>
+                    </div>
+                    <div class="terminal-body">
+                        <pre>sudo mkdir -p /etc/apt/keyrings
+curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
+sudo apt update && sudo apt install -y nodejs</pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4: Install NPM dependencies -->
+            <div class="step-block">
+                <div class="step-header">
+                    <div class="step-number">4</div>
+                    <h2 class="step-title">Install Yarn & Node Packages</h2>
+                </div>
+                <p class="step-description">
+                    Change directory into your Pterodactyl root path, install the global yarn package manager, and then download all of Pterodactyl's Node.js dependencies.
+                </p>
+                <div class="terminal-block">
+                    <div class="terminal-header">
+                        <div class="terminal-dots">
+                            <span class="terminal-dot red"></span>
+                            <span class="terminal-dot yellow"></span>
+                            <span class="terminal-dot green"></span>
+                        </div>
+                        <span class="terminal-title">Bash Terminal</span>
+                        <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> Copy</button>
+                    </div>
+                    <div class="terminal-body">
+                        <pre>cd /var/www/pterodactyl
+npm i -g yarn
+yarn install</pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 5: Install Theme -->
+            <div class="step-block">
+                <div class="step-header">
+                    <div class="step-number">5</div>
+                    <h2 class="step-title">Run Arix Installer</h2>
+                </div>
+                <p class="step-description">
+                    Execute the theme artisan installer command. Follow the interactive prompts in your terminal to complete the theme installation.
+                </p>
+                <div class="terminal-block">
+                    <div class="terminal-header">
+                        <div class="terminal-dots">
+                            <span class="terminal-dot red"></span>
+                            <span class="terminal-dot yellow"></span>
+                            <span class="terminal-dot green"></span>
+                        </div>
+                        <span class="terminal-title">Bash Terminal</span>
+                        <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> Copy</button>
+                    </div>
+                    <div class="terminal-body">
+                        <pre>php artisan arix install</pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 6: Uninstall Theme -->
+            <div class="step-block">
+                <div class="step-header">
+                    <div class="step-number">6</div>
+                    <h2 class="step-title">How to Uninstall (Optional)</h2>
+                </div>
+                <p class="step-description">
+                    If you ever need to uninstall the Arix Theme and restore your original Pterodactyl panel layout, you can execute the uninstall action command.
+                </p>
+                <div class="terminal-block">
+                    <div class="terminal-header">
+                        <div class="terminal-dots">
+                            <span class="terminal-dot red"></span>
+                            <span class="terminal-dot yellow"></span>
+                            <span class="terminal-dot green"></span>
+                        </div>
+                        <span class="terminal-title">Bash Terminal</span>
+                        <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> Copy</button>
+                    </div>
+                    <div class="terminal-body">
+                        <pre>php artisan arix uninstall</pre>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>Custom Install Guide | Designed and built by <a href="https://mrbeenopro.com" target="_blank">Mrbeenopro</a></p>
+    </footer>
+
+    <!-- Copy to Clipboard Script -->
+    <script>
+        function copyCode(buttonElement) {
+            const terminalBlock = buttonElement.closest('.terminal-block');
+            const preElement = terminalBlock.querySelector('pre');
+            const textToCopy = preElement.innerText.trim();
+
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                buttonElement.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+                buttonElement.classList.add('copied');
+
+                setTimeout(() => {
+                    buttonElement.innerHTML = '<i class="fa-regular fa-copy"></i> Copy';
+                    buttonElement.classList.remove('copied');
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+            });
+        }
+    </script>
+</body>
+</html>
