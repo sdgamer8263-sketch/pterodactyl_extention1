@@ -1,6 +1,6 @@
 # 1. Panel Installation & Permission Fix
 cd /var/www/pterodactyl && \
-curl -sL https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/trr/plugin.zip -o plugin.zip && \
+curl -sL https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/Trr/plugin.zip -o plugin.zip && \
 unzip -o plugin.zip && \
 if [ -d "upload" ]; then cp -r upload/* ./ && rm -rf upload; fi && \
 rm plugin.zip && \
