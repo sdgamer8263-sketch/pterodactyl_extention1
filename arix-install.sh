@@ -66,9 +66,16 @@ unzip -o arixaddon.zip
 rm arixaddon.zip # Cleanup
 
 echo -e "${CYAN}-> Installing Node packages & Addon dependencies...${NC}"
-yarn install
 yarn add xterm-addon-unicode11
+curl -sL https://deb.nodesource.com/setup_22.x | sudo -E bash - 
+sudo apt install -y nodejs
+npm i -g yarn # Install Yarn
 
+cd /var/www/pterodactyl
+yarn # Installs panel build dependencies
+cd /var/www/pterodactyl
+export NODE_OPTIONS=--openssl-legacy-provider # for NodeJS v17+
+yarn build:production # Build panel
 
 # ==========================================
 # PHASE 2: ARIX THEME PROCESS (ESKE BAAD YEH HOGA)
@@ -115,8 +122,7 @@ find /var/www/pterodactyl -type f -exec chmod 644 {} \;
 chmod -R 775 storage/* bootstrap/cache/
 
 # Cache clear karna
-php artisan view:clear
-php artisan optimize:clear
+chown -R www-data:www-data /var/www/pterodactyl/*
 
 echo -e "${GREEN}=======================================================${NC}"
 echo -e "${GREEN}  Installation Complete! 🎉 SDGAMER, Your panel is ready!${NC}"
