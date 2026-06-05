@@ -36,7 +36,7 @@ yarn add xterm-addon-unicode11
 
 # 6. Build the Panel
 echo -e "${GREEN}🏗️ Building the Pterodactyl Panel (This might take a few minutes)...${NC}"
-yarn build:production
+
 
 echo -e "${GREEN}=======================================================${NC}"
 echo -e "${GREEN}✅ Installation & Build Process Completed Successfully!${NC}"
