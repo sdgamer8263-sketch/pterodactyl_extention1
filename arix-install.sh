@@ -27,33 +27,11 @@ echo -e "${GREEN}=======================================================${NC}"
 echo -e "${YELLOW}⚠️ WARNING: Make sure you have a clean Pterodactyl installed.${NC}"
 sleep 3
 
-# ==========================================
-# CRITICAL FIX: Removing Conflicting GPG Keys
-# ==========================================
-echo -e "${CYAN}-> Fixing previous Node.js GPG conflicts...${NC}"
-sudo rm -f /etc/apt/sources.list.d/nodesource.list
-sudo rm -f /etc/apt/keyrings/nodesource.gpg
-sudo rm -f /usr/share/keyrings/nodesource.gpg
 
-# 1. System Dependencies Install karna
-echo -e "${CYAN}-> Installing system dependencies...${NC}"
-sudo apt update
-sudo apt install -y ca-certificates curl git gnupg unzip wget zip
-
-# 2. Node.js v22 Repository & Install
-echo -e "${CYAN}-> Setting up Node.js 22.x...${NC}"
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-sudo apt-get install -y nodejs
-
-# 3. Install Yarn
-echo -e "${CYAN}-> Installing Yarn...${NC}"
-npm i -g yarn
-
-# 4. Pterodactyl Folder mein jana
 cd /var/www/pterodactyl || { echo -e "${RED}Error: /var/www/pterodactyl folder not found!${NC}"; exit 1; }
 
 # ==========================================
-# PHASE 2: ARIX THEME PROCESS (ESKE BAAD YEH HOGA)
+# PHASE 1: ARIX THEME PROCESS (ESKE BAAD YEH HOGA)
 # ==========================================
 echo -e "${GREEN}-------------------------------------------${NC}"
 echo -e "${GREEN}🎨 STARTING PHASE 2: ARIX THEME PROCESS     ${NC}"
