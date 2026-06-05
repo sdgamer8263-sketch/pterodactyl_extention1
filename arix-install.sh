@@ -1,5 +1,49 @@
 #!/bin/bash
 
+# Colors for better output visibility
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo -e "${GREEN}=======================================================${NC}"
+echo -e "${GREEN}  Arix Addon - Auto Download, Unzip & Build Script     ${NC}"
+echo -e "${GREEN}=======================================================${NC}"
+
+echo -e "${YELLOW}⚠️ WARNING: Make sure you have a clean Pterodactyl & Blueprint installed.${NC}"
+echo -e "${YELLOW}⚠️ Make sure base Arix (v2.0.8) is already uploaded to your server.${NC}"
+sleep 3
+
+# 1. Go to Pterodactyl directory
+cd /var/www/pterodactyl || { echo -e "${RED}❌ Pterodactyl directory not found!${NC}"; exit 1; }
+
+# 2. Check and install 'unzip' and 'curl' if missing
+echo -e "${GREEN}📦 Checking for unzip & curl...${NC}"
+apt-get update -y && apt-get install -y unzip curl
+
+# 3. Automatically Download arixaddon.zip from your GitHub repository
+echo -e "${GREEN}⬇️ Downloading arixaddon.zip from GitHub...${NC}"
+curl -L -o arixaddon.zip "https://github.com/sdgamer8263-sketch/pterodactyl_extention1/raw/main/arixaddon.zip"
+
+# 4. Unzip the file automatically (overwriting existing files without prompt)
+echo -e "${GREEN}📂 Unzipping arixaddon.zip...${NC}"
+unzip -o arixaddon.zip
+rm arixaddon.zip # Delete the zip file after extraction to save space
+
+# 5. Fix Build Errors
+echo -e "${GREEN}🛠️ Installing xterm-addon-unicode11...${NC}"
+yarn add xterm-addon-unicode11
+
+# 6. Build the Panel
+echo -e "${GREEN}🏗️ Building the Pterodactyl Panel (This might take a few minutes)...${NC}"
+yarn build:production
+
+echo -e "${GREEN}=======================================================${NC}"
+echo -e "${GREEN}✅ Installation & Build Process Completed Successfully!${NC}"
+echo -e "${GREEN}=======================================================${NC}"
+
+#!/bin/bash
+
 # Exit immediately if a command exits with a non-zero status
 set -e 
 
