@@ -52,31 +52,6 @@ npm i -g yarn
 # 4. Pterodactyl Folder mein jana
 cd /var/www/pterodactyl || { echo -e "${RED}Error: /var/www/pterodactyl folder not found!${NC}"; exit 1; }
 
-
-# ==========================================
-# PHASE 1: ARIX ADDON PROCESS (PEHLE YEH HOGA)
-# ==========================================
-echo -e "${GREEN}-------------------------------------------${NC}"
-echo -e "${GREEN}📦 STARTING PHASE 1: ARIX ADDON PROCESS     ${NC}"
-echo -e "${GREEN}-------------------------------------------${NC}"
-
-echo -e "${CYAN}-> Downloading and extracting Arix Addon...${NC}"
-curl -L -o arixaddon.zip "https://github.com/sdgamer8263-sketch/pterodactyl_extention1/raw/main/arixaddon.zip"
-unzip -o arixaddon.zip
-rm arixaddon.zip # Cleanup
-
-echo -e "${CYAN}-> Installing Node packages & Addon dependencies...${NC}"
-yarn add xterm-addon-unicode11
-curl -sL https://deb.nodesource.com/setup_22.x | sudo -E bash - 
-sudo apt install -y nodejs
-npm i -g yarn # Install Yarn
-
-cd /var/www/pterodactyl
-yarn # Installs panel build dependencies
-cd /var/www/pterodactyl
-export NODE_OPTIONS=--openssl-legacy-provider # for NodeJS v17+
-yarn build:production # Build panel
-
 # ==========================================
 # PHASE 2: ARIX THEME PROCESS (ESKE BAAD YEH HOGA)
 # ==========================================
