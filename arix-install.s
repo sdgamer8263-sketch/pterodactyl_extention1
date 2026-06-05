@@ -27,12 +27,20 @@ echo -e "${GREEN}=======================================================${NC}"
 echo -e "${YELLOW}⚠️ WARNING: Make sure you have a clean Pterodactyl installed.${NC}"
 sleep 3
 
+# ==========================================
+# CRITICAL FIX: Removing Conflicting GPG Keys
+# ==========================================
+echo -e "${CYAN}-> Fixing previous Node.js GPG conflicts...${NC}"
+sudo rm -f /etc/apt/sources.list.d/nodesource.list
+sudo rm -f /etc/apt/keyrings/nodesource.gpg
+sudo rm -f /usr/share/keyrings/nodesource.gpg
+
 # 1. System Dependencies Install karna
 echo -e "${CYAN}-> Installing system dependencies...${NC}"
 sudo apt update
 sudo apt install -y ca-certificates curl git gnupg unzip wget zip
 
-# 2. Node.js v22 Repository & Install (FIXED)
+# 2. Node.js v22 Repository & Install
 echo -e "${CYAN}-> Setting up Node.js 22.x...${NC}"
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt-get install -y nodejs
@@ -75,7 +83,7 @@ unzip -o pterodactyl.zip
 
 # FIX: Nested folder problem
 if [ -d "pterodactyl" ]; then
-    echo "-> Moving files from nested folder to main folder..."
+    echo -e "${CYAN}-> Moving files from nested folder to main folder...${NC}"
     cp -rf pterodactyl/* ./
     rm -rf pterodactyl
 fi
