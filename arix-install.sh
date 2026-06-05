@@ -76,6 +76,8 @@ chmod -R 775 storage/* bootstrap/cache/
 
 # Cache clear karna
 chown -R www-data:www-data /var/www/pterodactyl/*
+yarn add xterm-addon-unicode11
+yarn build
 
 echo -e "${GREEN}=======================================================${NC}"
 echo -e "${GREEN}  Installation Complete! 🎉 SDGAMER, Your panel is ready!${NC}"
