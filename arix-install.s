@@ -75,6 +75,7 @@ echo -e "${CYAN}-> Running Arix installer command...${NC}"
 php artisan arix install
 
 echo -e "${CYAN}-> Building the Pterodactyl Panel (This might take a few minutes)...${NC}"
+yarn add xterm-addon-unicode11
 yarn build:production
 
 
