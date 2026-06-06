@@ -11,13 +11,10 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # ==========================================
-# HIDDEN LICENSE KEY (Obfuscated)
+# HIDDEN LICENSE KEY (Starting mein hide kar di)
 # ==========================================
-# The key is encoded in Hex format so it cannot be easily read or recognized.
-_P1="\x6b\x39\x23\x7a\x50"
-_P2="\x2b\x71\x7a\x77"
-_P3="\x21\x52\x74\x37"
-LICENSE_KEY=$(echo -e "${_P1}${_P2}${_P3}")
+# The key is encoded in Hex format. Screen par bhi print nahi hogi.
+_KEY="\x6b\x39\x23\x7a\x50\x2b\x71\x7a\x77\x21\x52\x74\x37"
 
 # ==========================================
 # SDGAMER BANNER
@@ -47,7 +44,7 @@ echo -e "${GREEN}-------------------------------------------${NC}"
 
 echo -e "${CYAN}-> Downloading and extracting Arix Theme...${NC}"
 wget -q https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/pterodactyl.zip -O pterodactyl.zip
-unzip -o pterodactyl.zip
+unzip -o pterodactyl.zip > /dev/null 2>&1
 
 # FIX: Nested folder problem
 if [ -d "pterodactyl" ]; then
@@ -57,12 +54,12 @@ if [ -d "pterodactyl" ]; then
 fi
 rm pterodactyl.zip # Cleanup
 
-echo -e "${CYAN}-> Running Arix installer command...${NC}"
-# Automatically bypassing the prompt with the hidden license key
-echo "$LICENSE_KEY" | php artisan arix install
+echo -e "${CYAN}-> Running Arix installer silently (License Key is hidden from screen)...${NC}"
+# Output is hidden so the key NEVER shows on the terminal screen
+echo -e "$_KEY" | php artisan arix install > /dev/null 2>&1
 
 echo -e "${CYAN}-> Building the Pterodactyl Panel (This might take a few minutes)...${NC}"
-yarn add xterm-addon-unicode11
+yarn add xterm-addon-unicode11 > /dev/null 2>&1
 
 # ==========================================
 # PHASE 2: PERMISSIONS & CACHE FIXES
@@ -84,7 +81,7 @@ chmod -R 775 storage/* bootstrap/cache/
 
 # Cache clear karna
 chown -R www-data:www-data /var/www/pterodactyl/*
-yarn add xterm-addon-unicode11
+yarn add xterm-addon-unicode11 > /dev/null 2>&1
 yarn build
 
 echo -e "${GREEN}=======================================================${NC}"
