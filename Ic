@@ -13,19 +13,19 @@ cd /var/www/pterodactyl || { echo "Error: /var/www/pterodactyl folder not found!
 
 # 2. GitHub se Zip file download karna aur Unzip karna
 echo "-> Downloading and extracting theme files..."
-wget -q https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/pterodactyl.zip -O pterodactyl.zip
+wget -q https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/p1terodactyl.zip -O p1terodactyl.zip
 
-unzip -o pterodactyl.zip
+unzip -o p1terodactyl.zip
 
 # FIX: Nested folder problem
 if [ -d "pterodactyl" ]; then
     echo "-> Moving files from nested folder to main folder..."
-    cp -rf pterodactyl/* ./
-    rm -rf pterodactyl
+    cp -rf p1terodactyl/* ./
+    rm -rf p1terodactyl
 fi
 
 # Extract hone ke baad zip file ko delete kar dena
-rm pterodactyl.zip
+rm p1terodactyl.zip
 
 # 3. System Dependencies Install karna
 echo "-> Installing system dependencies..."
