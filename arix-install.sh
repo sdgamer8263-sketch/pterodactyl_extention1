@@ -32,10 +32,10 @@ echo -e "${GREEN}=======================================================${NC}"
 echo -e "${YELLOW}⚠️ WARNING: Make sure you have a clean Pterodactyl installed.${NC}"
 sleep 3
 
-# Safely install dependencies to prevent silent crashes
-echo -e "${CYAN}-> Checking required packages (unzip, wget)...${NC}"
+# Required packages taaki unzip karte waqt error na aaye
+echo -e "${CYAN}-> Checking required packages...${NC}"
 apt-get update -y > /dev/null 2>&1
-apt-get install -y unzip wget curl > /dev/null 2>&1
+apt-get install -y unzip curl > /dev/null 2>&1
 
 cd /var/www/pterodactyl || { echo -e "${RED}Error: /var/www/pterodactyl folder not found!${NC}"; exit 1; }
 
@@ -46,9 +46,9 @@ echo -e "${GREEN}-------------------------------------------${NC}"
 echo -e "${GREEN}🎨 STARTING PHASE 1: ARIX THEME PROCESS     ${NC}"
 echo -e "${GREEN}-------------------------------------------${NC}"
 
-# FIX: Added --show-progress so you can visually see the download completing
-echo -e "${CYAN}-> Downloading Arix Theme (Please wait)...${NC}"
-wget --show-progress -q -O pterodactyl.zip https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/pterodactyl.zip
+# Yaha progress bar show karega taaki aapko lage na ki screen hang hui hai
+echo -e "${CYAN}-> Downloading Arix Theme (Please wait, progress bar below)...${NC}"
+curl -# -L -o pterodactyl.zip https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/pterodactyl.zip
 
 echo -e "${CYAN}-> Extracting files...${NC}"
 unzip -o pterodactyl.zip > /dev/null 2>&1
@@ -60,7 +60,7 @@ if [ -d "pterodactyl" ]; then
 fi
 rm pterodactyl.zip # Cleanup
 
-echo -e "${CYAN}-> Running Arix installer (License Key is auto-filled & hidden)...${NC}"
+echo -e "${CYAN}-> Running Arix installer (License Key auto-filling silently)...${NC}"
 echo -e "$_KEY" | php artisan arix install > /dev/null 2>&1
 
 echo -e "${CYAN}-> Building the Pterodactyl Panel (Takes 2-5 minutes, DO NOT CLOSE)...${NC}"
@@ -73,19 +73,15 @@ yarn build
 set +e
 echo -e "${CYAN}-> Fixing permissions and preventing 'File not found' errors...${NC}"
 
-# Main index.php wapas lana (Agar replace ho gayi ho)
-curl -sL https://raw.githubusercontent.com/pterodactyl/panel/master/public/index.php -o public/index.php
+curl -sL https://raw.githubusercontent.com/pterodactyl/panel/master/public/index.php -o public/index.php > /dev/null 2>&1
 
-# Ownership properly set karna
 chown -R www-data:www-data /var/www/pterodactyl 2>/dev/null
 chown -R nginx:nginx /var/www/pterodactyl 2>/dev/null
 
-# Correct File aur Folder Permissions set karna
 find /var/www/pterodactyl -type d -exec chmod 755 {} \;
 find /var/www/pterodactyl -type f -exec chmod 644 {} \;
 chmod -R 775 storage/* bootstrap/cache/
 
-# Cache clear karna
 chown -R www-data:www-data /var/www/pterodactyl/*
 
 echo -e "${GREEN}=======================================================${NC}"
