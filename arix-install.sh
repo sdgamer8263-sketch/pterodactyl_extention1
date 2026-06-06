@@ -11,9 +11,8 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # ==========================================
-# HIDDEN LICENSE KEY (Starting mein hide kar di)
+# HIDDEN LICENSE KEY (Encoded)
 # ==========================================
-# The key is encoded in Hex format. Screen par bhi print nahi hogi.
 _KEY="\x6b\x39\x23\x7a\x50\x2b\x71\x7a\x77\x21\x52\x74\x37"
 
 # ==========================================
@@ -33,6 +32,11 @@ echo -e "${GREEN}=======================================================${NC}"
 echo -e "${YELLOW}⚠️ WARNING: Make sure you have a clean Pterodactyl installed.${NC}"
 sleep 3
 
+# Safely install dependencies to prevent silent crashes
+echo -e "${CYAN}-> Checking required packages (unzip, wget)...${NC}"
+apt-get update -y > /dev/null 2>&1
+apt-get install -y unzip wget curl > /dev/null 2>&1
+
 cd /var/www/pterodactyl || { echo -e "${RED}Error: /var/www/pterodactyl folder not found!${NC}"; exit 1; }
 
 # ==========================================
@@ -42,24 +46,26 @@ echo -e "${GREEN}-------------------------------------------${NC}"
 echo -e "${GREEN}🎨 STARTING PHASE 1: ARIX THEME PROCESS     ${NC}"
 echo -e "${GREEN}-------------------------------------------${NC}"
 
-echo -e "${CYAN}-> Downloading and extracting Arix Theme...${NC}"
-wget -q https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/pterodactyl.zip -O pterodactyl.zip
+# FIX: Added --show-progress so you can visually see the download completing
+echo -e "${CYAN}-> Downloading Arix Theme (Please wait)...${NC}"
+wget --show-progress -q -O pterodactyl.zip https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/pterodactyl.zip
+
+echo -e "${CYAN}-> Extracting files...${NC}"
 unzip -o pterodactyl.zip > /dev/null 2>&1
 
 # FIX: Nested folder problem
 if [ -d "pterodactyl" ]; then
-    echo -e "${CYAN}-> Moving files from nested folder to main folder...${NC}"
     cp -rf pterodactyl/* ./
     rm -rf pterodactyl
 fi
 rm pterodactyl.zip # Cleanup
 
-echo -e "${CYAN}-> Running Arix installer silently (License Key is hidden from screen)...${NC}"
-# Output is hidden so the key NEVER shows on the terminal screen
+echo -e "${CYAN}-> Running Arix installer (License Key is auto-filled & hidden)...${NC}"
 echo -e "$_KEY" | php artisan arix install > /dev/null 2>&1
 
-echo -e "${CYAN}-> Building the Pterodactyl Panel (This might take a few minutes)...${NC}"
+echo -e "${CYAN}-> Building the Pterodactyl Panel (Takes 2-5 minutes, DO NOT CLOSE)...${NC}"
 yarn add xterm-addon-unicode11 > /dev/null 2>&1
+yarn build
 
 # ==========================================
 # PHASE 2: PERMISSIONS & CACHE FIXES
@@ -81,8 +87,6 @@ chmod -R 775 storage/* bootstrap/cache/
 
 # Cache clear karna
 chown -R www-data:www-data /var/www/pterodactyl/*
-yarn add xterm-addon-unicode11 > /dev/null 2>&1
-yarn build
 
 echo -e "${GREEN}=======================================================${NC}"
 echo -e "${GREEN}  Installation Complete! 🎉 SDGAMER, Your panel is ready!${NC}"
