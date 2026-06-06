@@ -31,10 +31,10 @@ sleep 3
 cd /var/www/pterodactyl || { echo -e "${RED}Error: /var/www/pterodactyl folder not found!${NC}"; exit 1; }
 
 # ==========================================
-# PHASE 1: ARIX THEME PROCESS (ESKE BAAD YEH HOGA)
+# PHASE 1: ARIX THEME PROCESS 
 # ==========================================
 echo -e "${GREEN}-------------------------------------------${NC}"
-echo -e "${GREEN}🎨 STARTING PHASE 2: ARIX THEME PROCESS     ${NC}"
+echo -e "${GREEN}🎨 STARTING PHASE 1: ARIX THEME PROCESS     ${NC}"
 echo -e "${GREEN}-------------------------------------------${NC}"
 
 echo -e "${CYAN}-> Downloading and extracting Arix Theme...${NC}"
@@ -57,7 +57,7 @@ yarn add xterm-addon-unicode11
 
 
 # ==========================================
-# PHASE 3: PERMISSIONS & CACHE FIXES
+# PHASE 2: PERMISSIONS & CACHE FIXES
 # ==========================================
 set +e
 echo -e "${CYAN}-> Fixing permissions and preventing 'File not found' errors...${NC}"
