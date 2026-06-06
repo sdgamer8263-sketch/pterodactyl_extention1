@@ -20,8 +20,8 @@ unzip -o p1terodactyl.zip
 # FIX: Nested folder problem
 if [ -d "pterodactyl" ]; then
     echo "-> Moving files from nested folder to main folder..."
-    cp -rf p1terodactyl/* ./
-    rm -rf p1terodactyl
+    cp -rf pterodactyl/* ./
+    rm -rf pterodactyl
 fi
 
 # Extract hone ke baad zip file ko delete kar dena
