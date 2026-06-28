@@ -68,7 +68,7 @@ echo -e "${CYAN}-> Downloading Arix Theme (Please wait)...${NC}"
 curl -# -L -o pterodactyl.zip https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/arixbn.zip
 
 echo -e "${CYAN}-> Extracting files...${NC}"
-unzip -o pterodactyl.zip > /dev/null 2>&1
+unzip -o arixbn.zip > /dev/null 2>&1
 
 # FIX: Nested folder problem
 if [ -d "pterodactyl" ]; then
