@@ -101,7 +101,11 @@ find /var/www/pterodactyl -type f -exec chmod 644 {} \;
 chmod -R 775 storage/* bootstrap/cache/
 
 chown -R www-data:www-data /var/www/pterodactyl/*
-
+cd /var/www/pterodactyl 
+cd /var/www/pterodactyl
+yarn add xterm-addon-unicode11
+yarn build
+cd
 echo -e "${GREEN}=======================================================${NC}"
 echo -e "${GREEN}  Installation Complete! 🎉 SDGAMER, Your panel is ready!${NC}"
 echo -e "${GREEN}=======================================================${NC}"
