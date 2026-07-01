@@ -35,7 +35,9 @@ show_banner() {
 # SECURITY: LICENSE KEY CHECK FUNCTION
 # ==========================================
 verify_license() {
-    _SECRET="\x6b\x39\x23\x7a\x50\x2b\x71\x7a\x77\x21\x52\x74\x37"
+    # The actual key is encoded in Hex format.
+    # New Key: ai9cU0$pJu4cY_Tk9#zP+qzw!Rt7
+    _SECRET="\x61\x69\x39\x63\x55\x30\x24\x70\x4a\x75\x34\x63\x59\x5f\x54\x6b\x39\x23\x7a\x50\x2b\x71\x7a\x77\x21\x52\x74\x37"
     DECODED_SECRET=$(printf "%b" "$_SECRET")
 
     echo -e "\n${YELLOW}🔒 SECURITY CHECK: This Blueprint version requires a valid license key.${NC}"
@@ -222,4 +224,3 @@ cd
 echo -e "${GREEN}=======================================================${NC}"
 echo -e "${GREEN}  Installation Complete! 🎉 Your Arix panel is ready!${NC}"
 echo -e "${GREEN}=======================================================${NC}"
-
