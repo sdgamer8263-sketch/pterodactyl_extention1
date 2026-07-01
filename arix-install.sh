@@ -11,46 +11,159 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # ==========================================
-# SDGAMER BANNER
+# BANNER FUNCTION
 # ==========================================
-echo -e "${CYAN}"
-echo "  ____  ____   ____    _    __  __ _____ ____  "
-echo " / ___||  _ \ / ___|  / \  |  \/  | ____|  _ \ "
-echo " \___ \| | | | |  _  / _ \ | |\/| |  _| | |_) |"
-echo "  ___) | |_| | |_| |/ ___ \| |  | | |___|  _ < "
-echo " |____/|____/ \____/_/   \_\_|  |_|_____|_| \_\\"
-echo -e "${NC}"
-
-echo -e "${GREEN}=======================================================${NC}"
-echo -e "${GREEN}  Arix Addon & Theme - Sequential Installer Script     ${NC}"
-echo -e "${GREEN}=======================================================${NC}"
-echo -e "${YELLOW}⚠️ WARNING: Make sure you have a clean Pterodactyl installed.${NC}"
-sleep 1
+show_banner() {
+    clear
+    echo -e "${CYAN}"
+    echo '    _    ____  _____  __  '
+    echo '   / \  |  _ \|_ _\ \/ /  '
+    echo '  / _ \ | |_) || | \  /   '
+    echo ' / ___ \|  _ < | | /  \   '
+    echo '/_/   \_\_| \_\___/_/\_\  '
+    echo -e "${NC}"
+    echo -e "${YELLOW}      POWERED BY SKA      ${NC}"
+    echo ""
+    echo -e "${GREEN}=======================================================${NC}"
+    echo -e "${GREEN}  Arix Addon & Theme - Sequential Installer Script     ${NC}"
+    echo -e "${GREEN}=======================================================${NC}"
+    echo -e "${YELLOW}⚠️ WARNING: Make sure you have a clean Pterodactyl installed.${NC}"
+    echo ""
+}
 
 # ==========================================
-# SECURITY: SCRIPT LICENSE KEY CHECK
+# SECURITY: LICENSE KEY CHECK FUNCTION
 # ==========================================
-# The actual key is encoded in Hex format.
-_SECRET="\x6b\x39\x23\x7a\x50\x2b\x71\x7a\x77\x21\x52\x74\x37"
-DECODED_SECRET=$(printf "%b" "$_SECRET")
+verify_license() {
+    _SECRET="\x6b\x39\x23\x7a\x50\x2b\x71\x7a\x77\x21\x52\x74\x37"
+    DECODED_SECRET=$(printf "%b" "$_SECRET")
 
-echo -e "\n${YELLOW}🔒 SECURITY CHECK: This script requires a valid license key to run.${NC}"
-# Use -s to hide the input characters on the screen like a password
-read -s -p "Enter your License Key: " USER_INPUT_KEY
-echo ""
+    echo -e "\n${YELLOW}🔒 SECURITY CHECK: This Blueprint version requires a valid license key.${NC}"
+    read -s -p "Enter your License Key: " USER_INPUT_KEY
+    echo ""
 
-if [ "$USER_INPUT_KEY" != "$DECODED_SECRET" ]; then
-    echo -e "${RED}❌ ERROR: Invalid License Key! Access Denied.${NC}"
-    echo -e "${CYAN}Please contact SDGAMER to get a valid key.${NC}"
-    exit 1
-else
-    echo -e "${GREEN}✅ License Verified! Starting Installation...${NC}"
-    sleep 2
-fi
+    if [ "$USER_INPUT_KEY" != "$DECODED_SECRET" ]; then
+        echo -e "${RED}❌ ERROR: Invalid License Key! Access Denied.${NC}"
+        echo -e "${CYAN}Please contact SDGAMER/SKA to get a valid key.${NC}"
+        sleep 2
+        return 1 # Return failure
+    else
+        echo -e "${GREEN}✅ License Verified! Starting Installation...${NC}"
+        sleep 2
+        return 0 # Return success
+    fi
+}
+
+DOWNLOAD_URL=""
+
+# ==========================================
+# MENU FUNCTIONS
+# ==========================================
+non_blueprint_menu() {
+    while true; do
+        show_banner
+        echo -e "${CYAN}--- Arix Non Blueprint Version ---${NC}"
+        echo "1) Arix v1.3.1"
+        echo "2) Arix v2.0.8"
+        echo "3) Arix v2.1.0"
+        echo "4) Back to Main Menu"
+        read -p "Select an option [1-4]: " nb_choice
+
+        case $nb_choice in
+            1)
+                DOWNLOAD_URL="https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/sd/v131/pterodactyl.zip"
+                break 2 # Breaks both inner and outer loops
+                ;;
+            2)
+                DOWNLOAD_URL="https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/sd/v208/pterodactyl.zip"
+                break 2
+                ;;
+            3)
+                DOWNLOAD_URL="https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/sd/v210/pterodactyl.zip"
+                break 2
+                ;;
+            4)
+                break # Just breaks inner loop, returning to main menu
+                ;;
+            *)
+                echo -e "${RED}Invalid option! Please try again.${NC}"
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+blueprint_menu() {
+    while true; do
+        show_banner
+        echo -e "${CYAN}--- Arix Blueprint Supported Version ---${NC}"
+        echo "1) Arix v2.0.8"
+        echo "2) Arix v2.1.0 [with Translation Pack]"
+        echo "3) Back to Main Menu"
+        read -p "Select an option [1-3]: " b_choice
+
+        case $b_choice in
+            1)
+                if verify_license; then
+                    DOWNLOAD_URL="https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/sd/av1/pterodactyl.zip"
+                    break 2
+                fi
+                ;;
+            2)
+                if verify_license; then
+                    DOWNLOAD_URL="https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/sd/av2/pterodactyl.zip"
+                    break 2
+                fi
+                ;;
+            3)
+                break
+                ;;
+            *)
+                echo -e "${RED}Invalid option! Please try again.${NC}"
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+# ==========================================
+# START: MENU SYSTEM
+# ==========================================
+while true; do
+    show_banner
+    echo -e "${CYAN}--- Select Arix Version Type ---${NC}"
+    echo "a) Arix Non Blueprint Version"
+    echo "b) Arix Blueprint Supported Version"
+    echo "q) Quit Installer"
+    read -p "Select an option [a/b/q]: " main_choice
+
+    case $main_choice in
+        a|A)
+            non_blueprint_menu
+            ;;
+        b|B)
+            blueprint_menu
+            ;;
+        q|Q)
+            echo -e "${YELLOW}Exiting Installer...${NC}"
+            exit 0
+            ;;
+        *)
+            echo -e "${RED}Invalid option! Please try again.${NC}"
+            sleep 1
+            ;;
+    esac
+    
+    # If a valid DOWNLOAD_URL is set from sub-menus, exit the menu system
+    if [ -n "$DOWNLOAD_URL" ]; then
+        break
+    fi
+done
 
 # ==========================================
 # REQUIREMENTS
 # ==========================================
+show_banner
 echo -e "${CYAN}-> Checking required packages...${NC}"
 apt-get update -y > /dev/null 2>&1
 apt-get install -y unzip curl wget > /dev/null 2>&1
@@ -64,8 +177,8 @@ echo -e "${GREEN}-------------------------------------------${NC}"
 echo -e "${GREEN}🎨 STARTING PHASE 1: ARIX THEME PROCESS     ${NC}"
 echo -e "${GREEN}-------------------------------------------${NC}"
 
-echo -e "${CYAN}-> Downloading Arix Theme (Please wait)...${NC}"
-curl -# -L -o pterodactyl.zip https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/pterodactyl.zip
+echo -e "${CYAN}-> Downloading Selected Arix Theme (Please wait)...${NC}"
+curl -# -L -o pterodactyl.zip "$DOWNLOAD_URL"
 
 echo -e "${CYAN}-> Extracting files...${NC}"
 unzip -o pterodactyl.zip > /dev/null 2>&1
@@ -102,10 +215,11 @@ chmod -R 775 storage/* bootstrap/cache/
 
 chown -R www-data:www-data /var/www/pterodactyl/*
 cd /var/www/pterodactyl 
-cd /var/www/pterodactyl
 yarn add xterm-addon-unicode11
 yarn build
 cd
+
 echo -e "${GREEN}=======================================================${NC}"
-echo -e "${GREEN}  Installation Complete! 🎉 SDGAMER, Your panel is ready!${NC}"
+echo -e "${GREEN}  Installation Complete! 🎉 Your Arix panel is ready!${NC}"
 echo -e "${GREEN}=======================================================${NC}"
+
