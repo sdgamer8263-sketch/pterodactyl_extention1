@@ -113,7 +113,7 @@ blueprint_menu() {
                 ;;
             2)
                 if verify_license; then
-                    DOWNLOAD_URL="https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/sd/av2/pterodactyl.zip"
+                    DOWNLOAD_URL="https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/pterodactyl.zip"
                     break 2
                 fi
                 ;;
