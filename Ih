@@ -13,9 +13,9 @@ cd /var/www/pterodactyl || { echo "Error: /var/www/pterodactyl folder not found!
 
 # 2. GitHub se Zip file download karna aur Unzip karna
 echo "-> Downloading and extracting theme files..."
-wget -q https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/p1terodactyl.zip -O p1terodactyl.zip
+wget -q https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/sd/pterodactyl.zip -O p1terodactyl.zip
 
-unzip -o p1terodactyl.zip
+unzip -o pterodactyl.zip
 
 # FIX: Nested folder problem
 if [ -d "pterodactyl" ]; then
@@ -47,8 +47,8 @@ yarn install
 
 # 6. Run Arix Installer
 echo "-> Running Arix installer..."
-php artisan arix install
-
+php artisan addons install
+php artisan migrate --force && php artisan optimize:clear && php artisan optimize && chmod -R 755 storage/* bootstrap/cache
 # ==========================================
 # 7. IMPORTANT FIXES: Permissions & Cache
 # Yahan se hum error aane par script rukne ko band kar rahe hain (set +e)
