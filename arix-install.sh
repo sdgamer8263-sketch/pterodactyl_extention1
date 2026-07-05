@@ -36,8 +36,8 @@ show_banner() {
 # ==========================================
 verify_license() {
     # The actual key is encoded in Hex format.
-    # New Key: ai9cU0$pJu4cY_Tk9#zP+qzw!Rt7
-    _SECRET="\x61\x69\x39\x63\x55\x30\x24\x70\x4a\x75\x34\x63\x59\x5f\x54\x6b\x39\x23\x7a\x50\x2b\x71\x7a\x77\x21\x52\x74\x37"
+    # New Key: k9#zP+qzw!Rt7ai9cU0$pJu4cY_TZ62BGma)qTi!Szs
+    _SECRET="\x6b\x39\x23\x7a\x50\x2b\x71\x7a\x77\x21\x52\x74\x37\x61\x69\x39\x63\x55\x30\x24\x70\x4a\x75\x34\x63\x59\x5f\x54\x5a\x36\x32\x42\x47\x6d\x61\x29\x71\x54\x69\x21\x53\x7a\x73"
     DECODED_SECRET=$(printf "%b" "$_SECRET")
 
     echo -e "\n${YELLOW}🔒 SECURITY CHECK: This Blueprint version requires a valid license key.${NC}"
