@@ -32,27 +32,38 @@ show_banner() {
 }
 
 # ==========================================
-# SECURITY: LICENSE KEY CHECK FUNCTION
+# SECURITY: ONLINE LICENSE KEY CHECK FUNCTION
 # ==========================================
 verify_license() {
-    # The actual key is encoded in Hex format.
-    # New Key: k9#zP+qzw!Rt7ai9cU0$pJu4cY_TZ62BGma)qTi!Szs
-    _SECRET="\x6b\x39\x23\x7a\x50\x2b\x71\x7a\x77\x21\x52\x74\x37\x61\x69\x39\x63\x55\x30\x24\x70\x4a\x75\x34\x63\x59\x5f\x54\x5a\x36\x32\x42\x47\x6d\x61\x29\x71\x54\x69\x21\x53\x7a\x73"
-    DECODED_SECRET=$(printf "%b" "$_SECRET")
-
     echo -e "\n${YELLOW}🔒 SECURITY CHECK: This Blueprint version requires a valid license key.${NC}"
-    read -s -p "Enter your License Key: " USER_INPUT_KEY
+    read -p "Enter your License Key: " USER_INPUT_KEY
     echo ""
 
-    if [ "$USER_INPUT_KEY" != "$DECODED_SECRET" ]; then
-        echo -e "${RED}❌ ERROR: Invalid License Key! Access Denied.${NC}"
+    # ইউজারের আইপি (IP) বের করা
+    user_ip=$(curl -s https://api.ipify.org)
+
+    # ⚠️ নিচে YOUR_REPLIT_LINK এর জায়গায় আপনার Replit এর লিংক দিন
+    SERVER_URL="https://YOUR_REPLIT_LINK.replit.dev/verify"
+
+    echo -e "${CYAN}Verifying License with online server... Please wait.${NC}"
+
+    # সার্ভারে রিকোয়েস্ট পাঠানো
+    response=$(curl -s -X POST -H "Content-Type: application/json" -d '{"key":"'"$USER_INPUT_KEY"'", "ip":"'"$user_ip"'"}' $SERVER_URL)
+
+    # রেসপন্স চেক করা
+    status=$(echo $response | grep -o '"status": "[^"]*' | cut -d'"' -f4)
+    message=$(echo $response | grep -o '"message": "[^"]*' | cut -d'"' -f4)
+
+    if [ "$status" == "success" ]; then
+        echo -e "${GREEN}✅ [SUCCESS] $message ${NC}"
+        echo -e "${GREEN}Starting Installation...${NC}"
+        sleep 2
+        return 0 # Return success
+    else
+        echo -e "${RED}❌ [ERROR] $message ${NC}"
         echo -e "${CYAN}Please contact SDGAMER/SKA to get a valid key.${NC}"
         sleep 2
         return 1 # Return failure
-    else
-        echo -e "${GREEN}✅ License Verified! Starting Installation...${NC}"
-        sleep 2
-        return 0 # Return success
     fi
 }
 
