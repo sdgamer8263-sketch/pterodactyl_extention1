@@ -220,4 +220,3 @@ cd
 echo -e "${GREEN}=======================================================${NC}"
 echo -e "${GREEN}  Installation Complete! 🎉 Your Arix panel is ready!${NC}"
 echo -e "${GREEN}=======================================================${NC}"
-
