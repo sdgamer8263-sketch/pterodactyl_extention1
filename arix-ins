@@ -43,7 +43,7 @@ verify_license() {
     user_ip=$(curl -s https://api.ipify.org)
 
     # ⚠️ নিচে YOUR_REPLIT_LINK এর জায়গায় আপনার Replit এর লিংক দিন
-    SERVER_URL="https://license-verifier--sourabhsagu95.replit.app/verify"
+    SERVER_URL="http://license-verifier--sourabhsagu95.replit.app/verify"
 
     echo -e "${CYAN}Verifying License with online server... Please wait.${NC}"
 
