@@ -287,8 +287,18 @@ done
 # ==========================================
 show_banner
 echo -e "${CYAN}-> Checking required packages...${NC}"
-apt-get update -y > /dev/null 2>&1
-apt-get install -y unzip curl wget > /dev/null 2>&1
+
+# Ignore silent package manager crashes
+set +e 
+if [ -x "$(command -v apt-get)" ]; then
+    apt-get update -y > /dev/null 2>&1
+    apt-get install -y unzip curl wget > /dev/null 2>&1
+elif [ -x "$(command -v dnf)" ]; then
+    dnf install -y unzip curl wget > /dev/null 2>&1
+elif [ -x "$(command -v yum)" ]; then
+    yum install -y unzip curl wget > /dev/null 2>&1
+fi
+set -e
 
 cd /var/www/pterodactyl || { echo -e "${RED}Error: /var/www/pterodactyl folder not found!${NC}"; exit 1; }
 
@@ -310,12 +320,18 @@ if [ -d "pterodactyl" ]; then
     cp -rf pterodactyl/* ./
     rm -rf pterodactyl
 fi
-rm pterodactyl.zip # Cleanup
+rm -f pterodactyl.zip # Cleanup
 
 # ==========================================
 # FIX: ARIX SYNTAX & SECURITY PATCH
 # ==========================================
-echo -e "${CYAN}-> Applying Safe Arix.php patch to prevent syntax errors...${NC}"
+echo -e "${CYAN}-> Removing old broken file and applying safe patch...${NC}"
+
+# Forcefully remove the bad file right after unzip to prevent permission errors
+set +e
+rm -f app/Console/Commands/Arix.php
+set -e
+
 cat << 'EOF' > app/Console/Commands/Arix.php
 <?php
 
@@ -465,7 +481,7 @@ class Arix extends Command
     {
         $this->line("Uninstalling...");
         $this->command("php artisan down");
-        $this->command("curl -L https://github.com/pterodactyl/panel/releases/latest/download/panel.tar.gz | tar -xzv");
+      $this->command("curl -L https://github.com/pterodactyl/panel/releases/latest/download/panel.tar.gz | tar -xzv");
         $this->command("chmod -R 755 storage/* bootstrap/cache");
         $this->command("composer install --no-dev --optimize-autoloader");
         $this->command("php artisan view:clear");
@@ -487,8 +503,10 @@ class Arix extends Command
 EOF
 
 echo -e "${CYAN}-> Running Arix installer...${NC}"
-# Setup key if required by Arix internally
+# Use set +e just in case artisan throws minor warnings
+set +e
 php artisan arix install
+set -e
 
 echo -e "${CYAN}-> Building the Pterodactyl Panel (Takes 2-5 minutes, DO NOT CLOSE)...${NC}"
 yarn add xterm-addon-unicode11 > /dev/null 2>&1
@@ -500,6 +518,8 @@ yarn build
 set +e
 echo -e "${CYAN}-> Fixing permissions and preventing 'File not found' errors...${NC}"
 
+# APPLYING THE SAME LOGIC HERE FOR INDEX.PHP
+rm -f public/index.php
 curl -sL https://raw.githubusercontent.com/pterodactyl/panel/master/public/index.php -o public/index.php > /dev/null 2>&1
 
 chown -R www-data:www-data /var/www/pterodactyl 2>/dev/null
