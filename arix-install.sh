@@ -412,7 +412,12 @@ echo -e "${CYAN}-> Running Arix installer...${NC}"
 # Setup key if required by Arix internally
 php artisan arix install
 
-echo -e "${CYAN}-> Building the Pterodactyl Panel (Takes 2-5 minutes, DO NOT CLOSE)...${NC}"
+echo -e "${CYAN}->🌿 Building the Pterodactyl Panel (Takes 2-5 minutes, DO NOT CLOSE)...🌿${NC}"
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+apt update
+apt install -y nodejs
+npm install -g yarn
+
 yarn add xterm-addon-unicode11 > /dev/null 2>&1
 yarn build
 
