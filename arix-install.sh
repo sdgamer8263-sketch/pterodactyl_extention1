@@ -315,6 +315,10 @@ rm -f pterodactyl.zip
 # FIX: ARIX SYNTAX & SECURITY PATCH
 # ==========================================
 echo -e "  ${CYAN}→ Applying Safe Arix.php patch...${NC}"
+
+# Ensure directory exists before creating the file
+mkdir -p app/Console/Commands
+
 cat << 'PHPEOF' > app/Console/Commands/Arix.php
 <?php
 
@@ -337,7 +341,7 @@ class Arix extends Command
         $b = new OutputFormatterStyle(null, null, ["bold"]);
         $this->output->getFormatter()->setStyle("b", $b);
         if ($action === null) {
-            $this->line("\r\n \r\n ░█████╗░██████╗░██╗██╗░░██╗\r\n ██╔══██╗██╔══██╗██║╚██╗██╔╝\r\n ███████║██████╔╝██║░╚███╔╝░\r\n ██╔══██║██╔══██╗██║░██╔██╗░\r\n ██║░░██║██║░░██║██║██╔╝╚██╗\r\n ╚═╝░░╚═╝╚═╝░░╚═╝╚═╝╚═╝░░╚═╝\r\n\r\n Thank you for purchasing Arix\r\n\r\n > php artisan arix (this window)\r\n > php artisan arix install\r\n > php artisan arix update\r\n > php artisan arix uninstall\r\n ");
+            $this->line("\r\n \r\n ░█████╗░██████╗░██╗██╗░░██╗\r\n ██╔══██╗██╔══██╗██║╚██╗██╔╝\r\n ███████║██████╔╝██║░╚███╔╝░\r\n ██╔══██║██╔══██╗██║░██╔██╗\r\n ██║░░██║██║░░██║██║██╔╝╚██╗\r\n ╚═╝░░╚═╝╚═╝░░╚═╝╚═╝╚═╝░░╚═╝\r\n\r\n Thank you for purchasing Arix\r\n\r\n > php artisan arix (this window)\r\n > php artisan arix install\r\n > php artisan arix update\r\n > php artisan arix uninstall\r\n ");
         } else {
             $this->info("\n Arix Theme\n \n");
             if ($action === "install") {
@@ -429,6 +433,12 @@ class Arix extends Command
     private function command($cmd) { return exec($cmd); }
 }
 PHPEOF
+
+echo -e "  ${CYAN}→ Clearing Laravel optimization caches...${NC}"
+# Flush everything so Artisan discovers the new command
+php artisan config:clear > /dev/null 2>&1 || true
+php artisan cache:clear > /dev/null 2>&1 || true
+rm -f bootstrap/cache/config.php > /dev/null 2>&1 || true
 
 echo -e "  ${CYAN}→ Running Arix installer...${NC}"
 php artisan arix install
