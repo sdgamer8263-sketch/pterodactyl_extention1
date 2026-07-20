@@ -5,7 +5,7 @@ set -e
 # ARIX THEME INSTALLER (BEAUTIFIED VERSION)
 # ==========================================
 
-API_URL="http://license.skahosting.qzz.io/api/verify"
+API_URL="https://ska-discord-bot2-4.onrender.com/api/verify"
 
 # --- Colors & Typography ---
 RED='\033[1;31m'
