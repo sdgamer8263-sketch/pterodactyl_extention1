@@ -214,7 +214,6 @@ success "Files extracted successfully."
 step "3/4" "Injecting Arix Patch Modules..."
 cat << 'EOF' > app/Console/Commands/Arix.php
 <?php
-<?php
 
 namespace Pterodactyl\Console\Commands;
 
