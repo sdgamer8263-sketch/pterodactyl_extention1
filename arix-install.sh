@@ -5,7 +5,7 @@ set -e
 # ARIX THEME INSTALLER (BEAUTIFIED VERSION)
 # ==========================================
 
-API_URL="https://license.skahosting.qzz.io/api/verify"
+API_URL="http://license.skahosting.qzz.io/api/verify"
 
 # --- Colors & Typography ---
 RED='\033[1;31m'
