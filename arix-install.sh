@@ -63,8 +63,20 @@ verify_license() {
     USER_IP=$(curl -s ifconfig.me)
     RESPONSE=$(curl -s -X POST "$API_URL" -H "Content-Type: application/json" -d "{\"email\":\"$USER_EMAIL\", \"key\":\"$USER_KEY\", \"ip\":\"$USER_IP\", \"requestedType\":\"$TYPE_REQ\"}")
     
-    SUCCESS=$(echo $RESPONSE | jq -r '.success')
-    MESSAGE=$(echo $RESPONSE | jq -r '.message')
+    # Native bash parsing (No JQ required)
+    if echo "$RESPONSE" | grep -qE '"success":\s*true'; then
+        SUCCESS="true"
+    else
+        SUCCESS="false"
+    fi
+    
+    # Extract message using sed
+    MESSAGE=$(echo "$RESPONSE" | sed -n 's/.*"message"\s*:\s*"\([^"]*\)".*/\1/p')
+    
+    # Fallback message if response is completely broken
+    if [ -z "$MESSAGE" ]; then
+        MESSAGE="Invalid response from the licensing server."
+    fi
 
     if [ "$SUCCESS" != "true" ]; then
         echo ""
@@ -78,9 +90,9 @@ verify_license() {
 }
 
 show_banner
-info "Fetching required packages (unzip, curl, jq)..."
+info "Fetching required packages (unzip, curl, wget)..."
 apt-get update -y > /dev/null 2>&1
-apt-get install -y unzip curl wget jq > /dev/null 2>&1
+apt-get install -y unzip curl wget > /dev/null 2>&1
 
 # Check Pterodactyl Directory
 if [ ! -d "/var/www/pterodactyl" ]; then
@@ -264,4 +276,3 @@ echo -e "${WHITE}    🎉 INSTALLATION COMPLETED SUCCESSFULLY! 🎉    ${NC}"
 echo -e "${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
 echo -e "${CYAN} Your Pterodactyl Panel has been updated with the Arix Theme.${NC}"
 echo -e "${WHITE} If you encounter any issues, try clearing your browser cache.${NC}\n"
-
