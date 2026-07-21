@@ -91,8 +91,19 @@ verify_license() {
 
 show_banner
 info "Fetching required packages (unzip, curl, wget)..."
-apt-get update -y > /dev/null 2>&1
-apt-get install -y unzip curl wget > /dev/null 2>&1
+
+# Temporarily disable set -e so the script doesn't crash if a package manager is missing/locked
+set +e
+if command -v apt-get >/dev/null 2>&1; then
+    apt-get update -y > /dev/null 2>&1
+    apt-get install -y unzip curl wget > /dev/null 2>&1
+elif command -v dnf >/dev/null 2>&1; then
+    dnf install -y unzip curl wget > /dev/null 2>&1
+elif command -v yum >/dev/null 2>&1; then
+    yum install -y unzip curl wget > /dev/null 2>&1
+fi
+# Re-enable set -e
+set -e
 
 # Check Pterodactyl Directory
 if [ ! -d "/var/www/pterodactyl" ]; then
