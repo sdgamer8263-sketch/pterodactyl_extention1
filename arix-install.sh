@@ -2,10 +2,10 @@
 set -e
 
 # ==========================================
-# ARIX THEME INSTALLER (BEAUTIFIED VERSION)
+# ARIX THEME INSTALLER (ADVANCED & ANIMATED)
 # ==========================================
 
-API_URL="http://78.154.103.27:13915/api/verify"
+API_URL="http://in-plat.wavynodes.site:25566/api/verify"
 
 # --- Colors & Typography ---
 RED='\033[1;31m'
@@ -24,6 +24,30 @@ warning() { echo -e "${YELLOW}[⚠] ${WHITE}$1${NC}"; }
 error() { echo -e "${RED}[✖] ${WHITE}$1${NC}"; }
 step() { echo -e "\n${MAGENTA}➤ ${CYAN}Step $1: ${WHITE}$2${NC}"; }
 
+# --- Animation Functions ---
+spinner() {
+    local pid=$1
+    local delay=0.1
+    local spinstr='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+    while [ "$(ps a | awk '{print $1}' | grep -w $pid)" ]; do
+        local temp=${spinstr#?}
+        printf "\r${MAGENTA} [%c] ${WHITE}Working... Please wait${NC}" "$spinstr"
+        local spinstr=$temp${spinstr%"$temp"}
+        sleep $delay
+    done
+    printf "\r\033[K" # Clear the spinner line completely
+}
+
+typewriter() {
+    local text="$1"
+    local delay=0.015
+    for (( i=0; i<${#text}; i++ )); do
+        echo -ne "${text:$i:1}"
+        sleep $delay
+    done
+    echo ""
+}
+
 # --- Banner Function ---
 show_banner() {
     clear
@@ -35,18 +59,52 @@ show_banner() {
     echo '   ██║  ██║██║  ██║██║██╔╝ ██╗'
     echo '   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝'
     echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
-    echo -e "${WHITE}    Advanced Pterodactyl Theme Installer ${NC}"
+    typewriter "          Advanced Pterodactyl Theme Installer"
     echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}\n"
 }
 
 DOWNLOAD_URL=""
 LICENSE_TYPE=""
+LICENSE_VERSION=""
+
+# ==========================================
+# DEPENDENCY CHECK (Node 22+ & Yarn)
+# ==========================================
+check_dependencies() {
+    info "Verifying Node.js and Yarn requirements..."
+    set +e
+    
+    # Node.js Check
+    if command -v node >/dev/null 2>&1; then
+        NODE_VER=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
+        if [ "$NODE_VER" -lt 22 ]; then
+            warning "Node.js version is below 22. Updating to Node 22..."
+            (curl -fsSL https://deb.nodesource.com/setup_22.x | bash - > /dev/null 2>&1 && apt-get install -y nodejs > /dev/null 2>&1) & spinner $!
+        else
+            success "Node.js v22+ is already installed."
+        fi
+    else
+        warning "Node.js not found. Installing Node 22..."
+        (curl -fsSL https://deb.nodesource.com/setup_22.x | bash - > /dev/null 2>&1 && apt-get install -y nodejs > /dev/null 2>&1) & spinner $!
+    fi
+    
+    # Yarn Check
+    if ! command -v yarn >/dev/null 2>&1; then
+        warning "Yarn not found. Installing Yarn..."
+        (npm install -g yarn > /dev/null 2>&1) & spinner $!
+        success "Yarn installed successfully."
+    else
+        success "Yarn is already installed."
+    fi
+    set -e
+}
 
 # ==========================================
 # LICENSE VERIFICATION
 # ==========================================
 verify_license() {
     local TYPE_REQ=$1
+    local VERSION_REQ=$2
     echo -e "${CYAN}┌──────────────────────────────────────────────┐${NC}"
     echo -e "${CYAN}│${YELLOW}         🔒 SECURITY VERIFICATION REQUIRED    ${CYAN}│${NC}"
     echo -e "${CYAN}└──────────────────────────────────────────────┘${NC}\n"
@@ -55,25 +113,23 @@ verify_license() {
     read USER_EMAIL
     echo -ne "${MAGENTA} ➜ ${WHITE}Enter your License Key: ${CYAN}"
     read USER_KEY
-    echo -ne "${NC}" # Reset color
+    echo -ne "${NC}" 
     
     echo ""
     info "Establishing secure connection to licensing server..."
     
     USER_IP=$(curl -s ifconfig.me)
-    RESPONSE=$(curl -s -X POST "$API_URL" -H "Content-Type: application/json" -d "{\"email\":\"$USER_EMAIL\", \"key\":\"$USER_KEY\", \"ip\":\"$USER_IP\", \"requestedType\":\"$TYPE_REQ\"}")
+    # Background curl for API verify with spinner
+    RESPONSE=$(curl -s -X POST "$API_URL" -H "Content-Type: application/json" -d "{\"email\":\"$USER_EMAIL\", \"key\":\"$USER_KEY\", \"ip\":\"$USER_IP\", \"requestedType\":\"$TYPE_REQ\", \"requestedVersion\":\"$VERSION_REQ\"}")
     
-    # Native bash parsing (No JQ required)
     if echo "$RESPONSE" | grep -qE '"success":\s*true'; then
         SUCCESS="true"
     else
         SUCCESS="false"
     fi
     
-    # Extract message using sed
     MESSAGE=$(echo "$RESPONSE" | sed -n 's/.*"message"\s*:\s*"\([^"]*\)".*/\1/p')
     
-    # Fallback message if response is completely broken
     if [ -z "$MESSAGE" ]; then
         MESSAGE="Invalid response from the licensing server."
     fi
@@ -85,91 +141,81 @@ verify_license() {
     else
         echo ""
         success "License Verified! Authorization Granted."
-        sleep 2
+        sleep 1.5
     fi
 }
 
-show_banner
-info "Fetching required packages (unzip, curl, wget)..."
-
-# Temporarily disable set -e so the script doesn't crash if a package manager is missing/locked
-set +e
-if command -v apt-get >/dev/null 2>&1; then
-    apt-get update -y > /dev/null 2>&1
-    apt-get install -y unzip curl wget > /dev/null 2>&1
-elif command -v dnf >/dev/null 2>&1; then
-    dnf install -y unzip curl wget > /dev/null 2>&1
-elif command -v yum >/dev/null 2>&1; then
-    yum install -y unzip curl wget > /dev/null 2>&1
-fi
-# Re-enable set -e
-set -e
-
-# Check Pterodactyl Directory
-if [ ! -d "/var/www/pterodactyl" ]; then
-    error "Pterodactyl installation not found in /var/www/pterodactyl!"
-    exit 1
-fi
-cd /var/www/pterodactyl
-
 # ==========================================
-# INTERACTIVE MENUS
+# MENUS
 # ==========================================
-non_blueprint_menu() {
+menu_210() {
     while true; do
         show_banner
-        echo -e "${WHITE}Please select your desired version:${NC}\n"
-        echo -e "${CYAN}  [ 1 ] ${WHITE}Arix v2.1.0 ${NC}(Stable)"
-        echo -e "${CYAN}  [ 2 ] ${WHITE}Return to Main Menu${NC}\n"
+        echo -e "${WHITE}Select Edition for ${GREEN}Arix v2.1.0${WHITE}:${NC}\n"
+        echo -e "${CYAN}  [ 1 ] ${WHITE}Standard Edition (Non-Blueprint)"
+        echo -e "${CYAN}  [ 2 ] ${WHITE}Blueprint Edition"
+        echo -e "${CYAN}  [ 3 ] ${WHITE}Go Back${NC}\n"
         
         echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
-        read nb_choice
+        read choice_210
         echo -ne "${NC}"
         
-        case $nb_choice in
+        case $choice_210 in
             1) 
                 LICENSE_TYPE="non-blueprint"
+                LICENSE_VERSION="2.1.0"
                 DOWNLOAD_URL="https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/sd/v210/pterodactyl.zip"
                 break 2 
                 ;;
-            2) break ;;
-            *) warning "Invalid selection. Try again."; sleep 1 ;;
-        esac
-    done
-}
-
-blueprint_menu() {
-    while true; do
-        show_banner
-        echo -e "${WHITE}Please select your desired version:${NC}\n"
-        echo -e "${CYAN}  [ 1 ] ${WHITE}Arix v2.1.0 ${NC}(with Translation Pack)"
-        echo -e "${CYAN}  [ 2 ] ${WHITE}Return to Main Menu${NC}\n"
-        
-        echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
-        read b_choice
-        echo -ne "${NC}"
-        
-        case $b_choice in
-            1) 
+            2) 
                 LICENSE_TYPE="blueprint"
+                LICENSE_VERSION="2.1.0"
                 DOWNLOAD_URL="https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/pterodactyl.zip"
                 break 2 
                 ;;
-            2) break ;;
-            *) warning "Invalid selection. Try again."; sleep 1 ;;
+            3) break ;;
+            *) warning "Invalid selection."; sleep 1 ;;
         esac
     done
 }
 
-# ==========================================
-# MAIN LOOP
-# ==========================================
+menu_208() {
+    while true; do
+        show_banner
+        echo -e "${WHITE}Select Edition for ${GREEN}Arix v2.0.8${WHITE}:${NC}\n"
+        echo -e "${CYAN}  [ 1 ] ${WHITE}Standard Edition (Non-Blueprint)"
+        echo -e "${CYAN}  [ 2 ] ${WHITE}Blueprint Edition"
+        echo -e "${CYAN}  [ 3 ] ${WHITE}Go Back${NC}\n"
+        
+        echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
+        read choice_208
+        echo -ne "${NC}"
+        
+        case $choice_208 in
+            1) 
+                LICENSE_TYPE="non-blueprint"
+                LICENSE_VERSION="2.0.8"
+                DOWNLOAD_URL="https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/sd/v208/pterodactyl.zip"
+                break 2 
+                ;;
+            2) 
+                LICENSE_TYPE="blueprint"
+                LICENSE_VERSION="2.0.8"
+                DOWNLOAD_URL="https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/sd/av1pterodactyl.zip"
+                break 2 
+                ;;
+            3) break ;;
+            *) warning "Invalid selection."; sleep 1 ;;
+        esac
+    done
+}
+
 while true; do
     show_banner
-    echo -e "${WHITE}Welcome to the Arix Theme setup. Choose your platform:${NC}\n"
-    
-    echo -e "${CYAN}  [ A ] ${WHITE}Standard Edition ${NC}(Non-Blueprint)"
-    echo -e "${CYAN}  [ B ] ${WHITE}Blueprint Edition ${NC}(Blueprint Supported)"
+    typewriter " Welcome to the Arix Theme setup. Select Version:"
+    echo ""
+    echo -e "${CYAN}  [ 1 ] ${WHITE}Arix v2.1.0 ${GREEN}(Latest)${NC}"
+    echo -e "${CYAN}  [ 2 ] ${WHITE}Arix v2.0.8 ${YELLOW}(Legacy)${NC}"
     echo -e "${RED}  [ Q ] ${WHITE}Abort Installation${NC}\n"
     
     echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
@@ -177,53 +223,57 @@ while true; do
     echo -ne "${NC}"
     
     case $main_choice in
-        a|A) non_blueprint_menu ;;
-        b|B) blueprint_menu ;;
-        q|Q) 
-            echo ""
-            warning "Installation aborted by user."
-            exit 0 
-            ;;
-        *) 
-            echo ""
-            warning "Invalid selection. Try again."
-            sleep 1 
-            ;;
+        1) menu_210 ;;
+        2) menu_208 ;;
+        q|Q) echo ""; warning "Installation aborted."; exit 0 ;;
+        *) echo ""; warning "Invalid selection. Try again."; sleep 1 ;;
     esac
     
-    if [ -n "$DOWNLOAD_URL" ] && [ -n "$LICENSE_TYPE" ]; then 
-        break
-    fi
+    if [ -n "$DOWNLOAD_URL" ]; then break; fi
 done
-
-# ==========================================
-# PRE-INSTALLATION VERIFICATION
-# ==========================================
-show_banner
-verify_license "$LICENSE_TYPE"
-show_banner
 
 # ==========================================
 # INSTALLATION PROCESS
 # ==========================================
+show_banner
+verify_license "$LICENSE_TYPE" "$LICENSE_VERSION"
+show_banner
+
+check_dependencies
+
 echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
 echo -e "${WHITE}             INITIALIZING INSTALLATION            ${NC}"
 echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
 
-step "1/4" "Downloading Arix Theme Assets..."
-curl -# -L -o pterodactyl.zip "$DOWNLOAD_URL"
+set +e
+(apt-get update -y > /dev/null 2>&1 && apt-get install -y unzip curl wget > /dev/null 2>&1) & spinner $!
+set -e
+
+if [ ! -d "/var/www/pterodactyl" ]; then
+    error "Pterodactyl installation not found in /var/www/pterodactyl!"
+    exit 1
+fi
+cd /var/www/pterodactyl
+
+step "1/4" "Downloading Arix Theme Assets (v$LICENSE_VERSION - $LICENSE_TYPE)..."
+(curl -sL -o pterodactyl.zip "$DOWNLOAD_URL") & spinner $!
+success "Downloaded successfully."
 
 step "2/4" "Extracting Core Files..."
-unzip -o pterodactyl.zip > /dev/null 2>&1
-if [ -d "pterodactyl" ]; then 
-    cp -rf pterodactyl/* ./ 
-    rm -rf pterodactyl 
-fi
-rm pterodactyl.zip 
+(
+    unzip -o pterodactyl.zip > /dev/null 2>&1
+    if [ -d "pterodactyl" ]; then 
+        cp -rf pterodactyl/* ./ 
+        rm -rf pterodactyl 
+    fi
+    rm pterodactyl.zip 
+) & spinner $!
 success "Files extracted successfully."
 
-step "3/4" "Injecting Arix Patch Modules..."
-cat << 'EOF' > app/Console/Commands/Arix.php
+step "3/4" "Injecting Modules..."
+if [ "$LICENSE_VERSION" == "2.1.0" ]; then
+    info "Applying Arix Patch Modules for v2.1.0..."
+    cat << 'EOF' > app/Console/Commands/Arix.php
 <?php
 
 namespace Pterodactyl\Console\Commands;
@@ -392,35 +442,39 @@ class Arix extends Command
     }
 }
 EOF
-php artisan arix install
+    php artisan arix install
+else
+    info "Skipping Arix.php patch for legacy v2.0.8..."
+fi
+success "Modules injected!"
 
-step "4/4" "Compiling Pterodactyl Panel..."
+step "4/4" "Compiling Pterodactyl Panel (Production Build)..."
 warning "This process takes 2-5 minutes. Please DO NOT close the terminal."
-yarn add xterm-addon-unicode11 > /dev/null 2>&1
-yarn build
+(
+    yarn add xterm-addon-unicode11 > /dev/null 2>&1
+    yarn build > /dev/null 2>&1
+) & spinner $!
+success "Panel compiled successfully!"
 
 set +e
 
-info "Applying Final Permissions..."
-curl -sL https://raw.githubusercontent.com/pterodactyl/panel/master/public/index.php -o public/index.php > /dev/null 2>&1
-chown -R www-data:www-data /var/www/pterodactyl 2>/dev/null
-chown -R nginx:nginx /var/www/pterodactyl 2>/dev/null
-find /var/www/pterodactyl -type d -exec chmod 755 {} \;
-find /var/www/pterodactyl -type f -exec chmod 644 {} \;
-chmod -R 775 storage/* bootstrap/cache/
-chown -R www-data:www-data /var/www/pterodactyl/*
-
-cd /var/www/pterodactyl
-yarn add xterm-addon-unicode11 > /dev/null 2>&1
-yarn build
-cd
+info "Applying Final Permissions & Caching..."
+(
+    curl -sL https://raw.githubusercontent.com/pterodactyl/panel/master/public/index.php -o public/index.php > /dev/null 2>&1
+    chown -R www-data:www-data /var/www/pterodactyl 2>/dev/null
+    chown -R nginx:nginx /var/www/pterodactyl 2>/dev/null
+    find /var/www/pterodactyl -type d -exec chmod 755 {} \;
+    find /var/www/pterodactyl -type f -exec chmod 644 {} \;
+    chmod -R 775 storage/* bootstrap/cache/
+    chown -R www-data:www-data /var/www/pterodactyl/*
+) & spinner $!
 
 # ==========================================
 # COMPLETION
 # ==========================================
 echo ""
 echo -e "${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
-echo -e "${WHITE}    🎉 INSTALLATION COMPLETED SUCCESSFULLY! 🎉    ${NC}"
+typewriter "    🎉 INSTALLATION COMPLETED SUCCESSFULLY! 🎉    "
 echo -e "${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
-echo -e "${CYAN} Your Pterodactyl Panel has been updated with the Arix Theme.${NC}"
+echo -e "${CYAN} Your Pterodactyl Panel has been updated with Arix v${LICENSE_VERSION} (${LICENSE_TYPE}).${NC}"
 echo -e "${WHITE} If you encounter any issues, try clearing your browser cache.${NC}\n"
