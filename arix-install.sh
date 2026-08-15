@@ -5,7 +5,7 @@ set -e
 # ARIX THEME INSTALLER (ADVANCED & ANIMATED)
 # ==========================================
 
-API_URL="http://104.251.123.179:1736/api/verify"
+API_URL="http://78.154.103.27:13915/api/verify"
 
 # --- Colors & Typography ---
 RED='\033[1;31m'
