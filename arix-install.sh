@@ -1000,7 +1000,9 @@ check_blueprint_framework() {
     if ! command -v blueprint >/dev/null 2>&1 && [ ! -f "/usr/local/bin/blueprint" ]; then
         echo -e "\n${RED}[✖] First install Blueprint Framework!${NC}"
         echo -e "${YELLOW}The Blueprint Framework must be installed on your panel before installing Addons.${NC}\n"
-        read -p "Press Enter to return to the main menu..."
+        
+        # Read with dummy variable to prevent skipping
+        read -p "Press Enter to return to the main menu..." dummy
         return 1
     fi
     return 0
@@ -1063,7 +1065,10 @@ show_addon_menu() {
 
 run_addon_installer() {
     # Check for Blueprint Framework first
-    check_blueprint_framework || return
+    # Using 'if ! ...' ensures the script doesn't exit due to 'set -e'
+    if ! check_blueprint_framework; then
+        return 0
+    fi
 
     selected_indices=()
     while true; do
@@ -1113,7 +1118,7 @@ run_addon_installer() {
                 
                 selected_indices=()
                 echo ""
-                read -p "Done. Press Enter to return..."
+                read -p "Done. Press Enter to return..." dummy
                 ;;
             *)
                 for val in $choice; do
