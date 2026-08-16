@@ -1,30 +1,66 @@
 #!/bin/bash
+# ==========================================
+# 🔐 BASIC PROTECTION & SETUP
+# ==========================================
+[[ $EUID -ne 0 ]] && echo -e "\033[1;31mRun as root!\033[0m" && exit 1
+
 set -e 
+trap 'echo -e "\n\033[1;31m[!] Force exit detected.\033[0m"; exit 1' SIGINT
 
 # ==========================================
-# ARIX THEME INSTALLER (ADVANCED & ANIMATED)
-# ========================================== 
+# 🎨 COLORS & TYPOGRAPHY
+# ==========================================
+RED='\033[1;31m'; GREEN='\033[1;32m'; BLUE='\033[1;34m'
+CYAN='\033[1;36m'; MAGENTA='\033[1;35m'; YELLOW='\033[1;33m'
+WHITE='\033[1;37m'; NC='\033[0m'
 
-API_URL="http://78.154.103.27:13915/api/verify" 
+R="\e[31m"; G="\e[32m"; Y="\e[33m"; B="\e[34m"; M="\e[35m"; C="\e[36m"; W="\e[97m"; N="\e[0m"
+BR="\e[1;31m"; BG="\e[1;32m"; BY="\e[1;33m"; BM="\e[1;35m"; BC="\e[1;36m"; BW="\e[1;97m"
 
-# --- Colors & Typography ---
-RED='\033[1;31m'
-GREEN='\033[1;32m'
-BLUE='\033[1;34m'
-CYAN='\033[1;36m'
-MAGENTA='\033[1;35m'
-YELLOW='\033[1;33m'
-WHITE='\033[1;37m'
-NC='\033[0m' # No Color 
+# ==========================================
+# 🛡️ SECURITY & OBFUSCATION (HIDDEN URLs)
+# ==========================================
+_dec() { echo "$1" | base64 -d; }
 
-# --- Custom Loggers ---
+# API & Addon URLs are now hidden from plain text
+API_URL=$(_dec "aHR0cDovLzc4LjE1NC4xMDMuMjc6MTM5MTUvYXBpL3ZlcmlmeQ==")
+ADDON_URL=$(_dec "aHR0cHM6Ly9naXRodWIuY29tL25vYml0YTMyOS9Ob2JpdGEtQ2xvdWQvcmF3L3JlZnMvaGVhZHMvbWFpbi90aGFtZS9FeHRlbnNpb24=")
+
+DOWNLOAD_URL=""
+LICENSE_TYPE=""
+LICENSE_VERSION=""
+ACTION=""
+selected_indices=()
+
+# ==========================================
+# 🧠 BLUEPRINT ADDON LIST (Deduplicated & Alphabetical)
+# ==========================================
+ADDON_NAMES=(
+    "autobackups.blueprint"
+    "minecraftplayermanager.blueprint"
+    "modrinthbrowser.blueprint"
+    "motdmaker.blueprint"
+    "resourcemanager.blueprint"
+    "sagaautosuspension.blueprint"
+    "sagaminecraftmodpackinstaller.blueprint"
+    "servericonimporter.blueprint"
+    "serverpropsmanager.blueprint"
+    "serversplitter.blueprint"
+    "snowflakes.blueprint"
+    "stats.blueprint"
+    "subdomainmanager.blueprint"
+    "versionchanger.blueprint"
+)
+
+# ==========================================
+# 🔍 CUSTOM LOGGERS & ANIMATIONS
+# ==========================================
 info() { echo -e "${BLUE}[ℹ] ${WHITE}$1${NC}"; }
 success() { echo -e "${GREEN}[✔] ${WHITE}$1${NC}"; }
 warning() { echo -e "${YELLOW}[⚠] ${WHITE}$1${NC}"; }
 error() { echo -e "${RED}[✖] ${WHITE}$1${NC}"; }
 step() { echo -e "\n${MAGENTA}➤ ${CYAN}Step $1: ${WHITE}$2${NC}"; } 
 
-# --- Animation Functions ---
 spinner() {
     local pid=$1
     local delay=0.1
@@ -35,7 +71,7 @@ spinner() {
         local spinstr=$temp${spinstr%"$temp"}
         sleep $delay
     done
-    printf "\r\033[K" # Clear the spinner line completely
+    printf "\r\033[K"
 } 
 
 typewriter() {
@@ -48,7 +84,6 @@ typewriter() {
     echo ""
 } 
 
-# --- Banner Function ---
 show_banner() {
     clear
     echo -e "${MAGENTA}"
@@ -59,23 +94,16 @@ show_banner() {
     echo '  ██║  ██║██║  ██║██║██╔╝ ██╗'
     echo '  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝'
     echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
-    typewriter "         Advanced Pterodactyl Theme Installer"
+    typewriter "         Advanced Pterodactyl Installer"
     echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}\n"
 } 
 
-DOWNLOAD_URL=""
-LICENSE_TYPE=""
-LICENSE_VERSION=""
-ACTION=""
-
 # ==========================================
-# DEPENDENCY CHECK (Node 22+ & Yarn)
+# 📦 ARIX THEME FUNCTIONS
 # ==========================================
 check_dependencies() {
     info "Verifying Node.js and Yarn requirements..."
     set +e
-    
-    # Node.js Check
     if command -v node >/dev/null 2>&1; then
         NODE_VER=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
         if [ "$NODE_VER" -lt 22 ]; then
@@ -89,7 +117,6 @@ check_dependencies() {
         (curl -fsSL https://deb.nodesource.com/setup_22.x | bash - > /dev/null 2>&1 && apt-get install -y nodejs > /dev/null 2>&1) & spinner $!
     fi
     
-    # Yarn Check
     if ! command -v yarn >/dev/null 2>&1; then
         warning "Yarn not found. Installing Yarn..."
         (npm install -g yarn > /dev/null 2>&1) & spinner $!
@@ -100,9 +127,6 @@ check_dependencies() {
     set -e
 } 
 
-# ==========================================
-# LICENSE VERIFICATION
-# ==========================================
 verify_license() {
     local TYPE_REQ=$1
     local VERSION_REQ=$2
@@ -120,7 +144,6 @@ verify_license() {
     info "Establishing secure connection to licensing server..."
     
     USER_IP=$(curl -s ifconfig.me)
-    # Background curl for API verify with spinner
     RESPONSE=$(curl -s -X POST "$API_URL" -H "Content-Type: application/json" -d "{\"email\":\"$USER_EMAIL\", \"key\":\"$USER_KEY\", \"ip\":\"$USER_IP\", \"requestedType\":\"$TYPE_REQ\", \"requestedVersion\":\"$VERSION_REQ\"}")
     
     if echo "$RESPONSE" | grep -qE '"success":\s*true'; then
@@ -130,10 +153,7 @@ verify_license() {
     fi
     
     MESSAGE=$(echo "$RESPONSE" | sed -n 's/.*"message"\s*:\s*"\([^"]*\)".*/\1/p')
-    
-    if [ -z "$MESSAGE" ]; then
-        MESSAGE="Invalid response from the licensing server."
-    fi 
+    [[ -z "$MESSAGE" ]] && MESSAGE="Invalid response from the licensing server."
 
     if [ "$SUCCESS" != "true" ]; then
         echo ""
@@ -146,145 +166,6 @@ verify_license() {
     fi
 } 
 
-# ==========================================
-# MENUS
-# ==========================================
-
-menu_action_210() {
-    while true; do
-        show_banner
-        echo -e "${WHITE}Select Action for ${GREEN}Arix v2.1.0 ($LICENSE_TYPE)${WHITE}:${NC}\n"
-        echo -e "${CYAN}  [ 1 ] ${WHITE}Install + Auto Fix"
-        echo -e "${CYAN}  [ 2 ] ${WHITE}Uninstall"
-        echo -e "${CYAN}  [ 3 ] ${WHITE}Fixes Issues ${YELLOW}(For already installed panels)${NC}"
-        echo -e "${CYAN}  [ 4 ] ${WHITE}Go Back${NC}\n"
-        
-        echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
-        read action_choice
-        echo -ne "${NC}"
-        
-        case $action_choice in
-            1) ACTION="install"; break 2 ;;
-            2) ACTION="uninstall"; break 2 ;;
-            3) ACTION="fix"; break 2 ;;
-            4) ACTION=""; break ;;
-            *) warning "Invalid selection."; sleep 1 ;;
-        esac
-    done
-}
-
-menu_action_208() {
-    while true; do
-        show_banner
-        echo -e "${WHITE}Select Action for ${GREEN}Arix v2.0.8 ($LICENSE_TYPE)${WHITE}:${NC}\n"
-        echo -e "${CYAN}  [ 1 ] ${WHITE}Install"
-        echo -e "${CYAN}  [ 2 ] ${WHITE}Uninstall"
-        echo -e "${CYAN}  [ 3 ] ${WHITE}Go Back${NC}\n"
-        
-        echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
-        read action_choice
-        echo -ne "${NC}"
-        
-        case $action_choice in
-            1) ACTION="install"; break 2 ;;
-            2) ACTION="uninstall"; break 2 ;;
-            3) ACTION=""; break ;;
-            *) warning "Invalid selection."; sleep 1 ;;
-        esac
-    done
-}
-
-menu_210() {
-    while true; do
-        show_banner
-        echo -e "${WHITE}Select Edition for ${GREEN}Arix v2.1.0${WHITE}:${NC}\n"
-        echo -e "${CYAN}  [ 1 ] ${WHITE}Standard Edition (Non-Blueprint)"
-        echo -e "${CYAN}  [ 2 ] ${WHITE}Blueprint Edition"
-        echo -e "${CYAN}  [ 3 ] ${WHITE}Go Back${NC}\n"
-        
-        echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
-        read choice_210
-        echo -ne "${NC}"
-        
-        case $choice_210 in
-            1) 
-                LICENSE_TYPE="non-blueprint"
-                LICENSE_VERSION="2.1.0"
-                DOWNLOAD_URL="https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/sd/v210/pterodactyl.zip"
-                menu_action_210
-                if [ -n "$ACTION" ]; then break 2; fi
-                ;;
-            2) 
-                LICENSE_TYPE="blueprint"
-                LICENSE_VERSION="2.1.0"
-                DOWNLOAD_URL="https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/pterodactyl.zip"
-                menu_action_210
-                if [ -n "$ACTION" ]; then break 2; fi
-                ;;
-            3) break ;;
-            *) warning "Invalid selection."; sleep 1 ;;
-        esac
-    done
-} 
-
-menu_208() {
-    while true; do
-        show_banner
-        echo -e "${WHITE}Select Edition for ${GREEN}Arix v2.0.8${WHITE}:${NC}\n"
-        echo -e "${CYAN}  [ 1 ] ${WHITE}Standard Edition (Non-Blueprint)"
-        echo -e "${CYAN}  [ 2 ] ${WHITE}Blueprint Edition"
-        echo -e "${CYAN}  [ 3 ] ${WHITE}Go Back${NC}\n"
-        
-        echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
-        read choice_208
-        echo -ne "${NC}"
-        
-        case $choice_208 in
-            1) 
-                LICENSE_TYPE="non-blueprint"
-                LICENSE_VERSION="2.0.8"
-                DOWNLOAD_URL="https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/sd/v208/pterodactyl.zip"
-                menu_action_208
-                if [ -n "$ACTION" ]; then break 2; fi
-                ;;
-            2) 
-                LICENSE_TYPE="blueprint"
-                LICENSE_VERSION="2.0.8"
-                DOWNLOAD_URL="https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/sd/av1pterodactyl.zip"
-                menu_action_208
-                if [ -n "$ACTION" ]; then break 2; fi
-                ;;
-            3) break ;;
-            *) warning "Invalid selection."; sleep 1 ;;
-        esac
-    done
-} 
-
-while true; do
-    show_banner
-    typewriter " Welcome to the Arix Theme setup. Select Version:"
-    echo ""
-    echo -e "${CYAN}  [ 1 ] ${WHITE}Arix v2.1.0 ${GREEN}(Latest)${NC}"
-    echo -e "${CYAN}  [ 2 ] ${WHITE}Arix v2.0.8 ${YELLOW}(Legacy)${NC}"
-    echo -e "${RED}  [ Q ] ${WHITE}Abort Installation${NC}\n"
-    
-    echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
-    read main_choice
-    echo -ne "${NC}"
-    
-    case $main_choice in
-        1) menu_210 ;;
-        2) menu_208 ;;
-        q|Q) echo ""; warning "Installation aborted."; exit 0 ;;
-        *) echo ""; warning "Invalid selection. Try again."; sleep 1 ;;
-    esac
-    
-    if [ -n "$ACTION" ]; then break; fi
-done 
-
-# ==========================================
-# REUSABLE FUNCTIONS
-# ==========================================
 apply_permissions_function() {
     info "Applying Final Permissions & Caching..."
     (
@@ -333,7 +214,6 @@ import {
     FaMap, FaUsers, FaFileImport, FaPuzzlePiece, FaLayerGroup, 
     FaCube, FaRocket, FaBolt, FaTerminal, FaArchive, FaDatabase, FaCalendarAlt 
 } from 'react-icons/fa';
-// ------------------------- 
 
 const ICON_MAP: Record<string, number> = {
     heroicons: 0,
@@ -342,7 +222,6 @@ const ICON_MAP: Record<string, number> = {
     remixicon: 3,
     remixiconFilled: 4,
 };
-// ------------------------- 
 
 const shouldDisplayRoute = (route: any, nestId?: number, eggId?: number): boolean => {
     const hasNestMatch = route.nestIds?.includes(nestId ?? 0) || route.nestId === nestId;
@@ -355,7 +234,6 @@ const useServerIds = () => {
     const nestId = ServerContext.useStoreState((state) => state.server.data?.nestId);
     const eggId = ServerContext.useStoreState((state) => state.server.data?.eggId);
     const tier = ServerContext.useStoreState((state) => state.server.data?.tier); 
-
     return { nestId, eggId, tier };
 }; 
 
@@ -398,9 +276,7 @@ const Link = (props: LinkItem) => {
 
     const buildPath = usePathBuilder(); 
 
-    if (hasRestrictions && !nestMatches && !eggMatches && shouldHide) {
-        return null;
-    } 
+    if (hasRestrictions && !nestMatches && !eggMatches && shouldHide) return null;
 
     const starIcon = showStar ? <StarIcon className='w-3 text-yellow-500' /> : null; 
 
@@ -433,13 +309,7 @@ const Link = (props: LinkItem) => {
         </div>
     ); 
 
-    return hasPermissions ? (
-        <Can action={permissions} matchAny>
-            {inner}
-        </Can>
-    ) : (
-        inner
-    );
+    return hasPermissions ? <Can action={permissions} matchAny>{inner}</Can> : inner;
 }; 
 
 const Category = (props: LinkCategory) => {
@@ -453,9 +323,7 @@ const Category = (props: LinkCategory) => {
     const eggMatches = hasEggRestrictions && typeof eggId === 'number' && props.eggs?.includes(eggId) === true;
     const hasRestrictions = hasNestRestrictions || hasEggRestrictions; 
 
-    if (hasRestrictions && !nestMatches && !eggMatches) {
-        return null;
-    } 
+    if (hasRestrictions && !nestMatches && !eggMatches) return null;
 
     return hasPermissions ? (
         <Can action={permissions} matchAny>
@@ -480,7 +348,6 @@ const Category = (props: LinkCategory) => {
     );
 }; 
 
-// --- BLUEPRINT LOGIC INJECTION ---
 const blueprintExtensions = [...new Set(blueprintRoutes.server.map((route) => route.identifier))]; 
 
 const useExtensionEggs = () => {
@@ -523,16 +390,13 @@ const useBlueprintServerRoutes = () => {
     }, [rootAdmin, serverEgg, extensionEggs]);
 }; 
 
-// --- GET FOOLPROOF ROUTE KEY ---
 const getRouteKey = (route: any) => {
     return `${route.name || ''} ${route.path || ''} ${route.identifier || ''}`.toLowerCase();
 };
-// ------------------------------------------------------ 
 
 const renderBlueprintIcon = (route: any, iconType: string) => {
     const key = getRouteKey(route); 
 
-    // ১. তোমার নির্দিষ্ট করা আইকনসমূহ
     if (key.includes('plugin')) return <FaPlug size="1.25rem" />;
     if (key.includes('mod')) return <FaBoxOpen size="1.25rem" />;
     if (key.includes('version')) return <FaCodeBranch size="1.25rem" />;
@@ -541,15 +405,12 @@ const renderBlueprintIcon = (route: any, iconType: string) => {
     if (key.includes('world') || key.includes('map')) return <FaMap size="1.25rem" />;
     if (key.includes('icon') || key.includes('import')) return <FaFileImport size="1.25rem" />;
     
-    // ২. সাধারণ কিছু কমন এক্সটেনশনের জন্য স্মার্ট আইকন
     if (key.includes('motd')) return <FaEdit size="1.25rem" />;
     if (key.includes('subdomain') || key.includes('domain')) return <FaGlobe size="1.25rem" />;
     if (key.includes('backup') || key.includes('archive')) return <FaArchive size="1.25rem" />;
     if (key.includes('database') || key.includes('mysql')) return <FaDatabase size="1.25rem" />;
     if (key.includes('schedule') || key.includes('task')) return <FaCalendarAlt size="1.25rem" />; 
 
-    // ৩. 🌟 অটোমেটিক ডায়নামিক আইকন (অজানা এক্সটেনশনের জন্য)
-    // যদি উপরের কোনো নাম না মেলে, তবে স্লাইডারের বদলে নিচের যেকোনো একটি কুল আইকন অটোমেটিক বসে যাবে!
     const genericIcons = [
         <FaPuzzlePiece size="1.25rem" />, 
         <FaLayerGroup size="1.25rem" />, 
@@ -559,7 +420,6 @@ const renderBlueprintIcon = (route: any, iconType: string) => {
         <FaTerminal size="1.25rem" />
     ];
     
-    // নামের ওপর ভিত্তি করে একটা নির্দিষ্ট আইকন ফিক্স করবে, যাতে রিলোড দিলে বারবার চেঞ্জ না হয়
     let hash = 0;
     for (let i = 0; i < key.length; i++) {
         hash = key.charCodeAt(i) + ((hash << 5) - hash);
@@ -573,11 +433,7 @@ const BlueprintLink = ({ route }: { route: any }) => {
     const { t } = useTranslation('arix/navigation');
     
     const inner = (
-        <NavLink
-            to={buildPath(route.path, true)}
-            exact={route.exact}
-            className='routers_link'
-        >
+        <NavLink to={buildPath(route.path, true)} exact={route.exact} className='routers_link'>
             <div className='routers_link_icon'>
                 {renderBlueprintIcon(route, iconType)}
             </div>
@@ -585,24 +441,17 @@ const BlueprintLink = ({ route }: { route: any }) => {
         </NavLink>
     ); 
 
-    return route.permission ? (
-        <Can action={route.permission} matchAny>
-            {inner}
-        </Can>
-    ) : inner;
+    return route.permission ? <Can action={route.permission} matchAny>{inner}</Can> : inner;
 };
-// --------------------------------- 
 
 export const Navigation = () => {
     const links = useStoreState((state: ApplicationStore) => state.settings.data?.arix?.links ?? {});
     const blueprintServerRoutes = useBlueprintServerRoutes(); 
 
-    // --- IMPROVED SORTING LOGIC ---
     const sortedBlueprintRoutes = useMemo(() => {
         return [...blueprintServerRoutes].sort((a, b) => {
             const keyA = getRouteKey(a);
             const keyB = getRouteKey(b); 
-
             const getRank = (key: string) => {
                 if (key.includes('plugin')) return 1;
                 if (key.includes('mod')) return 2;
@@ -610,27 +459,20 @@ export const Navigation = () => {
                 if (key.includes('propert')) return 4;
                 if (key.includes('player')) return 5;
                 if (key.includes('world')) return 6;
-                return 99; // বাকি সব (Icon Importer বা অন্য যা ইন্সটল করবে, সেগুলো এই ক্যাটাগরিতে পড়বে)
+                return 99; 
             }; 
-
             const rankA = getRank(keyA);
             const rankB = getRank(keyB); 
-
-            if (rankA !== rankB) {
-                return rankA - rankB;
-            }
+            if (rankA !== rankB) return rankA - rankB;
             return keyA.localeCompare(keyB);
         });
     }, [blueprintServerRoutes]);
-    // ---------------------------- 
 
     return (
         <React.Fragment>
             {Object.values(links).map((category, index) => (
                 <Category key={index} {...category} />
             ))} 
-
-            {/* BLUEPRINT EXTENSIONS MENU */}
             {sortedBlueprintRoutes.length > 0 && (
                 <div className='routers_category-wrapper'>
                     <span className='routers_category'>Extensions</span>
@@ -685,8 +527,6 @@ export const ComponentLoader = () => {
                         </PermissionRoute>
                     );
                 })} 
-
-                {/* BLUEPRINT COMPONENTS ROUTES */}
                 {blueprintServerRoutes.map(({ path, permission, component: Component }) => (
                     <PermissionRoute key={path} permission={permission} path={buildPath(path)} exact>
                         <Spinner.Suspense>
@@ -694,7 +534,6 @@ export const ComponentLoader = () => {
                         </Spinner.Suspense>
                     </PermissionRoute>
                 ))} 
-
                 <Route path={'*'} component={NotFound} />
             </Switch>
         </TransitionRouter>
@@ -713,7 +552,6 @@ import { NotFound } from '@/components/elements/ScreenBlock';
 import TransitionRouter from '@/TransitionRouter';
 import Spinner from '@/components/elements/Spinner';
 import routes from '@/routers/routes'; 
-
 import ContentContainer from '@/components/elements/ContentContainer';
 import { CodeIcon, CogIcon, EyeIcon, KeyIcon, LockClosedIcon, UserIcon } from '@heroicons/react/outline';
 import LayoutWrapper from './layouts/LayoutWrapper';
@@ -727,11 +565,9 @@ import BeforeSubNavigation from '@blueprint/components/Navigation/SubNavigation/
 import AdditionalAccountItems from '@blueprint/components/Navigation/SubNavigation/AdditionalAccountItems';
 import AfterSubNavigation from '@blueprint/components/Navigation/SubNavigation/AfterSubNavigation';
 import blueprintRoutes from '@blueprint/extends/routers/routes';
-// ------------------------- 
 
 export default () => {
     const { t } = useTranslation('arix/account'); 
-
     const position = useStoreState((state: ApplicationStore) => state.settings.data?.arix?.announcement?.position ?? 'none');
     const location = useLocation(); 
 
@@ -742,74 +578,31 @@ export default () => {
                 <div className='border-b border-gray-600 pt-6 px-4'>
                     <ContentContainer>
                         <div className={'flex items-center gap-x-3 mb-4'}>
-                            <div
-                                className={
-                                    'w-10 h-10 bg-arix/30 rounded-component !border-none flex items-center justify-center text-arix'
-                                }
-                            >
+                            <div className={'w-10 h-10 bg-arix/30 rounded-component !border-none flex items-center justify-center text-arix'}>
                                 <UserIcon className={'w-6'} />
                             </div>
                             <p className={'text-lg font-medium text-gray-300'}>{t('account-settings')}</p>
                         </div>
                         <div className='flex items-center gap-x-8'> 
 
-                            {/* BLUEPRINT SUB-NAVIGATION INJECTED */}
                             <BeforeSubNavigation /> 
 
-                            {/* ARIX DEFAULT MENUS */}
-                            <NavLink
-                                to={'/account'}
-                                className={
-                                    'border-b border-transparent py-2 flex items-center gap-1 hover:text-gray-100 duration-300'
-                                }
-                                activeClassName={'!border-arix text-gray-100'}
-                                exact
-                            >
-                                <CogIcon className={'w-5'} />
-                                {t('general')}
+                            <NavLink to={'/account'} className={'border-b border-transparent py-2 flex items-center gap-1 hover:text-gray-100 duration-300'} activeClassName={'!border-arix text-gray-100'} exact>
+                                <CogIcon className={'w-5'} />{t('general')}
                             </NavLink>
-                            <NavLink
-                                to={'/account/security'}
-                                className={
-                                    'border-b border-transparent py-2 flex items-center gap-1 hover:text-gray-100 duration-300'
-                                }
-                                activeClassName={'!border-arix text-gray-100'}
-                            >
-                                <LockClosedIcon className={'w-5'} />
-                                {t('security')}
+                            <NavLink to={'/account/security'} className={'border-b border-transparent py-2 flex items-center gap-1 hover:text-gray-100 duration-300'} activeClassName={'!border-arix text-gray-100'}>
+                                <LockClosedIcon className={'w-5'} />{t('security')}
                             </NavLink>
-                            <NavLink
-                                to={'/account/ssh-keys'}
-                                className={
-                                    'border-b border-transparent py-2 flex items-center gap-1 hover:text-gray-100 duration-300'
-                                }
-                                activeClassName={'!border-arix text-gray-100'}
-                            >
-                                <KeyIcon className={'w-5'} />
-                                {t('ssh-keys')}
+                            <NavLink to={'/account/ssh-keys'} className={'border-b border-transparent py-2 flex items-center gap-1 hover:text-gray-100 duration-300'} activeClassName={'!border-arix text-gray-100'}>
+                                <KeyIcon className={'w-5'} />{t('ssh-keys')}
                             </NavLink>
-                            <NavLink
-                                to={'/account/api-keys'}
-                                className={
-                                    'border-b border-transparent py-2 flex items-center gap-1 hover:text-gray-100 duration-300'
-                                }
-                                activeClassName={'!border-arix text-gray-100'}
-                            >
-                                <CodeIcon className={'w-5'} />
-                                {t('api-keys')}
+                            <NavLink to={'/account/api-keys'} className={'border-b border-transparent py-2 flex items-center gap-1 hover:text-gray-100 duration-300'} activeClassName={'!border-arix text-gray-100'}>
+                                <CodeIcon className={'w-5'} />{t('api-keys')}
                             </NavLink>
-                            <NavLink
-                                to={'/account/activity'}
-                                className={
-                                    'border-b border-transparent py-2 flex items-center gap-1 hover:text-gray-100 duration-300'
-                                }
-                                activeClassName={'!border-arix text-gray-100'}
-                            >
-                                <EyeIcon className={'w-5'} />
-                                {t('activity')}
+                            <NavLink to={'/account/activity'} className={'border-b border-transparent py-2 flex items-center gap-1 hover:text-gray-100 duration-300'} activeClassName={'!border-arix text-gray-100'}>
+                                <EyeIcon className={'w-5'} />{t('activity')}
                             </NavLink> 
 
-                            {/* BLUEPRINT SUB-NAVIGATION INJECTED */}
                             <AdditionalAccountItems />
                             <AfterSubNavigation /> 
 
@@ -829,14 +622,11 @@ export default () => {
                                 <Component />
                             </Route>
                         ))} 
-
-                        {/* BLUEPRINT ROUTES PROPERLY INJECTED IN ARIX UI */}
                         {(blueprintRoutes.account || []).map(({ path, component: Component }) => (
                             <Route key={path} path={`/account/${path}`.replace('//', '/')} exact>
                                 <Component />
                             </Route>
                         ))} 
-
                         <Route path={'*'}>
                             <NotFound />
                         </Route>
@@ -866,13 +656,7 @@ import { DesktopComputerIcon, EyeIcon, MoonIcon, SunIcon } from '@heroicons/reac
 const AppearanceWrapper = () => {
     const { i18n } = useTranslation('arix/account');
     const [selectedLanguage, setSelectedLanguage] = useState(i18n.language); 
-
-    const {
-        modeToggler,
-        defaultMode,
-        langSwitch,
-        languageOptions: languages,
-    } = useStoreState((state: ApplicationStore) => state.settings.data!.arix.advanced); 
+    const { modeToggler, defaultMode, langSwitch, languageOptions: languages } = useStoreState((state: ApplicationStore) => state.settings.data!.arix.advanced); 
 
     const [theme, setTheme] = useState(() => localStorage.getItem('theme') || defaultMode || 'dark');
     const [isCompact, setIsCompact] = useState(() => localStorage.getItem('compactMode') === 'true');
@@ -883,66 +667,30 @@ const AppearanceWrapper = () => {
     useEffect(() => {
         localStorage.setItem('theme', theme);
         document.body.classList.remove('lightmode', 'darkmode', 'oled', 'auto');
-        if (theme === 'light') {
-            document.body.classList.add('lightmode');
-        } else if (theme === 'oled') {
-            document.body.classList.add('oled');
-        } else if (theme === 'auto') {
+        if (theme === 'light') { document.body.classList.add('lightmode'); }
+        else if (theme === 'oled') { document.body.classList.add('oled'); }
+        else if (theme === 'auto') {
             document.body.classList.add('auto');
             const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             document.body.classList.toggle('lightmode', !prefersDark);
         }
     }, [theme]); 
 
-    useEffect(() => {
-        localStorage.setItem('compactMode', String(isCompact));
-        document.body.classList.toggle('compact', isCompact);
-    }, [isCompact]); 
-
-    useEffect(() => {
-        localStorage.setItem('privacyMode', String(isPrivacyMode));
-        document.body.classList.toggle('privacy', isPrivacyMode);
-    }, [isPrivacyMode]); 
-
-    useEffect(() => {
-        localStorage.setItem('panelSounds', String(panelSounds));
-    }, [panelSounds]); 
-
-    useEffect(() => {
-        localStorage.setItem('animations', String(animations));
-        document.body.classList.toggle('animationsDisabled', animations);
-    }, [animations]); 
+    useEffect(() => { localStorage.setItem('compactMode', String(isCompact)); document.body.classList.toggle('compact', isCompact); }, [isCompact]); 
+    useEffect(() => { localStorage.setItem('privacyMode', String(isPrivacyMode)); document.body.classList.toggle('privacy', isPrivacyMode); }, [isPrivacyMode]); 
+    useEffect(() => { localStorage.setItem('panelSounds', String(panelSounds)); }, [panelSounds]); 
+    useEffect(() => { localStorage.setItem('animations', String(animations)); document.body.classList.toggle('animationsDisabled', animations); }, [animations]); 
 
     const handleLanguageChange = (event: ChangeEvent<HTMLSelectElement>) => {
         const newLanguage = event.target.value; 
-
         updateAccountLanguage(newLanguage).then(() => {
             i18n.changeLanguage(newLanguage);
             setSelectedLanguage(newLanguage);
         });
     }; 
+    useEffect(() => { setSelectedLanguage(i18n.language || 'en'); }, [i18n.language]); 
 
-    useEffect(() => {
-        setSelectedLanguage(i18n.language || 'en');
-    }, [i18n.language]); 
-
-    const ToggleRow = ({
-        label,
-        description,
-        offLabel,
-        onLabel,
-        value,
-        onToggle,
-        name,
-    }: {
-        label: React.ReactNode;
-        description: string;
-        offLabel?: string;
-        onLabel?: string;
-        value: boolean;
-        onToggle: (checked: boolean) => void;
-        name: string;
-    }) => (
+    const ToggleRow = ({ label, description, offLabel, onLabel, value, onToggle, name }: any) => (
         <div className={'flex justify-between items-center'}>
             <div>
                 <p className={'text-gray-100 mb-1'}>{label}</p>
@@ -965,15 +713,9 @@ const AppearanceWrapper = () => {
                             <p className={'text-gray-100 mb-1'}>Panel Language</p>
                             <p className='text-sm text-gray-300'>Use the panel in different languages</p>
                         </div>
-                        <Select
-                            value={selectedLanguage}
-                            className={'!w-auto min-w-40 !pr-10'}
-                            onChange={handleLanguageChange}
-                        >
+                        <Select value={selectedLanguage} className={'!w-auto min-w-40 !pr-10'} onChange={handleLanguageChange}>
                             {languages.map((lang: { key: string; name: string }) => (
-                                <option key={lang.key} value={lang.key}>
-                                    {lang.name}
-                                </option>
+                                <option key={lang.key} value={lang.key}>{lang.name}</option>
                             ))}
                         </Select>
                     </div>
@@ -984,73 +726,20 @@ const AppearanceWrapper = () => {
                             <p className={'text-gray-100 mb-1'}>Light/Dark Mode</p>
                             <p className='text-sm text-gray-300'>Choose the style that suits you best</p>
                         </div>
-                        <Button.Text
-                            className={`flex gap-1 !rounded-r-none min-w-20 ${theme === 'light' ? '!bg-gray-500' : ''}`}
-                            onClick={() => setTheme('light')}
-                        >
-                            <SunIcon className='w-5' />
-                            Light
-                        </Button.Text>
-                        <Button.Text
-                            className={`flex gap-1 !rounded-none min-w-20 ${
-                                theme === 'darkmode' ? '!bg-gray-500' : ''
-                            }`}
-                            onClick={() => setTheme('darkmode')}
-                        >
-                            <MoonIcon className='w-5' />
-                            Dark
-                        </Button.Text>
-                        <Button.Text
-                            className={`flex gap-1 !rounded-none min-w-20 ${theme === 'oled' ? '!bg-gray-500' : ''}`}
-                            onClick={() => setTheme('oled')}
-                        >
-                            <EyeIcon className='w-5' />
-                            Oled
-                        </Button.Text>
-                        <Button.Text
-                            className={`flex gap-1 !rounded-l-none min-w-20 ${theme === 'auto' ? '!bg-gray-500' : ''}`}
-                            onClick={() => setTheme('auto')}
-                        >
-                            <DesktopComputerIcon className='w-5' />
-                            Auto
-                        </Button.Text>
+                        <Button.Text className={`flex gap-1 !rounded-r-none min-w-20 ${theme === 'light' ? '!bg-gray-500' : ''}`} onClick={() => setTheme('light')}><SunIcon className='w-5' /> Light</Button.Text>
+                        <Button.Text className={`flex gap-1 !rounded-none min-w-20 ${theme === 'darkmode' ? '!bg-gray-500' : ''}`} onClick={() => setTheme('darkmode')}><MoonIcon className='w-5' /> Dark</Button.Text>
+                        <Button.Text className={`flex gap-1 !rounded-none min-w-20 ${theme === 'oled' ? '!bg-gray-500' : ''}`} onClick={() => setTheme('oled')}><EyeIcon className='w-5' /> Oled</Button.Text>
+                        <Button.Text className={`flex gap-1 !rounded-l-none min-w-20 ${theme === 'auto' ? '!bg-gray-500' : ''}`} onClick={() => setTheme('auto')}><DesktopComputerIcon className='w-5' /> Auto</Button.Text>
                     </div>
                 )}
-                <ToggleRow
-                    label={'Display Mode'}
-                    description={'Toggle between normal and compact display modes'}
-                    value={isCompact}
-                    onToggle={setIsCompact}
-                    onLabel={'Compact'}
-                    offLabel={'Normal'}
-                    name={'compact'}
-                />
-                <ToggleRow
-                    label={'Panel Sounds'}
-                    description={'Play a sound at crucial moments in the panel'}
-                    value={panelSounds}
-                    onToggle={setPanelSounds}
-                    name={'panel-sounds'}
-                />
-                <ToggleRow
-                    label={'Privacy Mode'}
-                    description={'Hide sensitive information in the panel'}
-                    value={isPrivacyMode}
-                    onToggle={setIsPrivacyMode}
-                    name={'privacy'}
-                />
-                <ToggleRow
-                    label={'Animations'}
-                    description={'Enable or disable animations in the panel'}
-                    value={animations}
-                    onToggle={setAnimations}
-                    name={'animations'}
-                />
+                <ToggleRow label={'Display Mode'} description={'Toggle between normal and compact display modes'} value={isCompact} onToggle={setIsCompact} onLabel={'Compact'} offLabel={'Normal'} name={'compact'} />
+                <ToggleRow label={'Panel Sounds'} description={'Play a sound at crucial moments in the panel'} value={panelSounds} onToggle={setPanelSounds} name={'panel-sounds'} />
+                <ToggleRow label={'Privacy Mode'} description={'Hide sensitive information in the panel'} value={isPrivacyMode} onToggle={setIsPrivacyMode} name={'privacy'} />
+                <ToggleRow label={'Animations'} description={'Enable or disable animations in the panel'} value={animations} onToggle={setAnimations} name={'animations'} />
             </div>
         </TitledGreyBox>
     );
 }; 
-
 export default AppearanceWrapper; 
 EOF
     success "AppearanceWrapper.tsx patched successfully."
@@ -1058,9 +747,7 @@ EOF
     info "Patching RegisterController.php..."
     cat << 'EOF' > app/Http/Controllers/Auth/RegisterController.php
 <?php 
-
 namespace Pterodactyl\Http\Controllers\Auth; 
-
 use Illuminate\Http\Request;
 use Pterodactyl\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -1069,39 +756,17 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class RegisterController extends AbstractRegisterController
 {
-    /**
-     * Handle all incoming requests for the authentication routes and render the
-     * base authentication view component. React will take over at this point and
-     * turn the register area into an SPA.
-     */
-    public function index(): View
-    {
-        return view('templates/auth.core');
-    } 
-
-    /**
-     * Handle a register request to the application.
-     *
-     * @throws \Pterodactyl\Exceptions\DisplayException
-     * @throws \Illuminate\Validation\ValidationException
-     */
+    public function index(): View { return view('templates/auth.core'); } 
     public function register(Request $request): JsonResponse
     {
         if ($this->hasTooManyLoginAttempts($request)) {
             $this->fireLockoutEvent($request);
             $this->sendLockoutResponse($request);
         } 
-
         try {
             $user = User::where('email', $request->input('email'))->orWhere('username', $request->input('username'))->first(); 
-
-            if ($user) {
-                return response()->json(['error' => 'The email or username is already taken.'], 400);
-            }
-        } catch (ModelNotFoundException) {
-            $this->sendFailedRegisterResponse($request);
-        } 
-
+            if ($user) { return response()->json(['error' => 'The email or username is already taken.'], 400); }
+        } catch (ModelNotFoundException) { $this->sendFailedRegisterResponse($request); } 
         return $this->sendRegisterResponse($request);
     }
 }
@@ -1117,293 +782,378 @@ EOF
 }
 
 # ==========================================
-# ACTION: UNINSTALL
+# 🛠️ ARIX THEME MENUS
 # ==========================================
-if [ "$ACTION" == "uninstall" ]; then
-    show_banner
-    if [ ! -d "/var/www/pterodactyl" ]; then
-        error "Pterodactyl installation not found in /var/www/pterodactyl!"
-        exit 1
-    fi
-    cd /var/www/pterodactyl
-    
-    step "1/1" "Uninstalling Arix Theme..."
-    php artisan arix uninstall
-    
-    echo ""
-    echo -e "${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
-    typewriter "    🎉 UNINSTALLATION COMPLETED SUCCESSFULLY! 🎉    "
-    echo -e "${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
-    exit 0
-fi
+menu_action_210() {
+    while true; do
+        show_banner
+        echo -e "${WHITE}Select Action for ${GREEN}Arix v2.1.0 ($LICENSE_TYPE)${WHITE}:${NC}\n"
+        echo -e "${CYAN}  [ 1 ] ${WHITE}Install + Auto Fix"
+        echo -e "${CYAN}  [ 2 ] ${WHITE}Uninstall"
+        echo -e "${CYAN}  [ 3 ] ${WHITE}Fixes Issues ${YELLOW}(For already installed panels)${NC}"
+        echo -e "${CYAN}  [ 4 ] ${WHITE}Go Back${NC}\n"
+        
+        echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
+        read action_choice
+        case $action_choice in
+            1) ACTION="install"; break 2 ;;
+            2) ACTION="uninstall"; break 2 ;;
+            3) ACTION="fix"; break 2 ;;
+            4) ACTION=""; break ;;
+            *) warning "Invalid selection."; sleep 1 ;;
+        esac
+    done
+}
 
-# ==========================================
-# ACTION: FIX ISSUES
-# ==========================================
-if [ "$ACTION" == "fix" ]; then
-    show_banner
-    check_dependencies
-    
-    if [ ! -d "/var/www/pterodactyl" ]; then
-        error "Pterodactyl installation not found in /var/www/pterodactyl!"
-        exit 1
-    fi
-    cd /var/www/pterodactyl
-    
-    step "1/1" "Applying Auto Fixes & Compiling Panel..."
-    apply_fixes_function
-    apply_permissions_function
-    
-    echo ""
-    echo -e "${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
-    typewriter "      🎉 FIXES APPLIED SUCCESSFULLY! 🎉      "
-    echo -e "${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
-    echo -e "${WHITE} If you encounter any issues, try clearing your browser cache.${NC}\n"
-    exit 0
-fi
+menu_action_208() {
+    while true; do
+        show_banner
+        echo -e "${WHITE}Select Action for ${GREEN}Arix v2.0.8 ($LICENSE_TYPE)${WHITE}:${NC}\n"
+        echo -e "${CYAN}  [ 1 ] ${WHITE}Install"
+        echo -e "${CYAN}  [ 2 ] ${WHITE}Uninstall"
+        echo -e "${CYAN}  [ 3 ] ${WHITE}Go Back${NC}\n"
+        
+        echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
+        read action_choice
+        case $action_choice in
+            1) ACTION="install"; break 2 ;;
+            2) ACTION="uninstall"; break 2 ;;
+            3) ACTION=""; break ;;
+            *) warning "Invalid selection."; sleep 1 ;;
+        esac
+    done
+}
 
-# ==========================================
-# ACTION: INSTALL 
-# ==========================================
-if [ "$ACTION" == "install" ]; then
-    show_banner
-    verify_license "$LICENSE_TYPE" "$LICENSE_VERSION"
-    show_banner 
+run_theme_installer() {
+    while true; do
+        show_banner
+        typewriter " Welcome to the Arix Theme setup. Select Version:"
+        echo ""
+        echo -e "${CYAN}  [ 1 ] ${WHITE}Arix v2.1.0 ${GREEN}(Latest)${NC}"
+        echo -e "${CYAN}  [ 2 ] ${WHITE}Arix v2.0.8 ${YELLOW}(Legacy)${NC}"
+        echo -e "${RED}  [ Q ] ${WHITE}Go Back${NC}\n"
+        
+        echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
+        read main_choice
+        
+        case $main_choice in
+            1)
+                while true; do
+                    show_banner
+                    echo -e "${WHITE}Select Edition for ${GREEN}Arix v2.1.0${WHITE}:${NC}\n"
+                    echo -e "${CYAN}  [ 1 ] ${WHITE}Standard Edition (Non-Blueprint)"
+                    echo -e "${CYAN}  [ 2 ] ${WHITE}Blueprint Edition"
+                    echo -e "${CYAN}  [ 3 ] ${WHITE}Go Back${NC}\n"
+                    echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
+                    read choice_210
+                    case $choice_210 in
+                        1) 
+                            LICENSE_TYPE="non-blueprint"
+                            LICENSE_VERSION="2.1.0"
+                            DOWNLOAD_URL=$(_dec "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3NkZ2FtZXI4MjYzLXNrZXRjaC9wdGVyb2RhY3R5bF9leHRlbnRpb24xL21haW4vc2QvdjIxMC9wdGVyb2RhY3R5bC56aXA=")
+                            menu_action_210
+                            [[ -n "$ACTION" ]] && break 2 
+                            ;;
+                        2) 
+                            LICENSE_TYPE="blueprint"
+                            LICENSE_VERSION="2.1.0"
+                            DOWNLOAD_URL=$(_dec "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3NkZ2FtZXI4MjYzLXNrZXRjaC9wdGVyb2RhY3R5bF9leHRlbnRpb24xL21haW4vcHRlcm9kYWN0eWwuemlw")
+                            menu_action_210
+                            [[ -n "$ACTION" ]] && break 2 
+                            ;;
+                        3) break ;;
+                        *) warning "Invalid selection."; sleep 1 ;;
+                    esac
+                done
+                ;;
+            2)
+                while true; do
+                    show_banner
+                    echo -e "${WHITE}Select Edition for ${GREEN}Arix v2.0.8${WHITE}:${NC}\n"
+                    echo -e "${CYAN}  [ 1 ] ${WHITE}Standard Edition (Non-Blueprint)"
+                    echo -e "${CYAN}  [ 2 ] ${WHITE}Blueprint Edition"
+                    echo -e "${CYAN}  [ 3 ] ${WHITE}Go Back${NC}\n"
+                    echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
+                    read choice_208
+                    case $choice_208 in
+                        1) 
+                            LICENSE_TYPE="non-blueprint"
+                            LICENSE_VERSION="2.0.8"
+                            DOWNLOAD_URL=$(_dec "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3NkZ2FtZXI4MjYzLXNrZXRjaC9wdGVyb2RhY3R5bF9leHRlbnRpb24xL21haW4vc2QvdjIwOC9wdGVyb2RhY3R5bC56aXA=")
+                            menu_action_208
+                            [[ -n "$ACTION" ]] && break 2 
+                            ;;
+                        2) 
+                            LICENSE_TYPE="blueprint"
+                            LICENSE_VERSION="2.0.8"
+                            DOWNLOAD_URL=$(_dec "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3NkZ2FtZXI4MjYzLXNrZXRjaC9wdGVyb2RhY3R5bF9leHRlbnRpb24xL21haW4vc2QvYXYxcHRlcm9kYWN0eWwuemlw")
+                            menu_action_208
+                            [[ -n "$ACTION" ]] && break 2 
+                            ;;
+                        3) break ;;
+                        *) warning "Invalid selection."; sleep 1 ;;
+                    esac
+                done
+                ;;
+            q|Q) ACTION=""; break ;;
+            *) warning "Invalid selection. Try again."; sleep 1 ;;
+        esac
+        
+        if [ -n "$ACTION" ]; then
+            # Execute Theme Logic
+            if [ "$ACTION" == "uninstall" ]; then
+                show_banner
+                [[ ! -d "/var/www/pterodactyl" ]] && error "Pterodactyl not found!" && exit 1
+                cd /var/www/pterodactyl
+                step "1/1" "Uninstalling Arix Theme..."
+                php artisan arix uninstall
+                echo -e "\n${GREEN} 🎉 UNINSTALLATION COMPLETED SUCCESSFULLY! 🎉 ${NC}\n"
+                exit 0
+            fi
 
-    check_dependencies 
+            if [ "$ACTION" == "fix" ]; then
+                show_banner; check_dependencies
+                [[ ! -d "/var/www/pterodactyl" ]] && error "Pterodactyl not found!" && exit 1
+                cd /var/www/pterodactyl
+                step "1/1" "Applying Auto Fixes & Compiling Panel..."
+                apply_fixes_function
+                apply_permissions_function
+                echo -e "\n${GREEN} 🎉 FIXES APPLIED SUCCESSFULLY! 🎉 ${NC}\n"
+                exit 0
+            fi
 
-    echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
-    echo -e "${WHITE}             INITIALIZING INSTALLATION            ${NC}"
-    echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}" 
+            if [ "$ACTION" == "install" ]; then
+                show_banner
+                verify_license "$LICENSE_TYPE" "$LICENSE_VERSION"
+                show_banner; check_dependencies 
 
-    set +e
-    (apt-get update -y > /dev/null 2>&1 && apt-get install -y unzip curl wget > /dev/null 2>&1) & spinner $!
-    set -e 
+                [[ ! -d "/var/www/pterodactyl" ]] && error "Pterodactyl not found!" && exit 1
+                cd /var/www/pterodactyl 
 
-    if [ ! -d "/var/www/pterodactyl" ]; then
-        error "Pterodactyl installation not found in /var/www/pterodactyl!"
-        exit 1
-    fi
-    cd /var/www/pterodactyl 
+                step "1/4" "Downloading Arix Theme Assets..."
+                (curl -sL -o pterodactyl.zip "$DOWNLOAD_URL") & spinner $!
+                success "Downloaded successfully." 
 
-    step "1/4" "Downloading Arix Theme Assets (v$LICENSE_VERSION - $LICENSE_TYPE)..."
-    (curl -sL -o pterodactyl.zip "$DOWNLOAD_URL") & spinner $!
-    success "Downloaded successfully." 
+                step "2/4" "Extracting Core Files..."
+                ( unzip -o pterodactyl.zip >/dev/null 2>&1; [[ -d "pterodactyl" ]] && cp -rf pterodactyl/* ./ && rm -rf pterodactyl; rm pterodactyl.zip ) & spinner $!
+                success "Files extracted." 
 
-    step "2/4" "Extracting Core Files..."
-    (
-        unzip -o pterodactyl.zip > /dev/null 2>&1
-        if [ -d "pterodactyl" ]; then 
-            cp -rf pterodactyl/* ./ 
-            rm -rf pterodactyl 
-        fi
-        rm pterodactyl.zip 
-    ) & spinner $!
-    success "Files extracted successfully." 
-
-    step "3/4" "Injecting Modules..."
-    if [ "$LICENSE_VERSION" == "2.1.0" ]; then
-        info "Applying Arix Patch Modules for v2.1.0..."
-        cat << 'EOF' > app/Console/Commands/Arix.php
+                step "3/4" "Injecting Modules..."
+                if [ "$LICENSE_VERSION" == "2.1.0" ]; then
+                    # We inject a simplified Arix.php command controller
+                    cat << 'EOF' > app/Console/Commands/Arix.php
 <?php 
-
 namespace Pterodactyl\Console\Commands; 
-
 use Illuminate\Console\Command;
-use Symfony\Component\Console\Formatter\OutputFormatterStyle;
 use Illuminate\Support\Facades\File; 
-
 class Arix extends Command
 {
     protected $signature = "arix {action?}";
-    protected $description = "All commands for Arix Theme for Pterodactyl."; 
-
-    public function handle()
-    {
+    public function handle() {
         $action = $this->argument("action");
-        $title = new OutputFormatterStyle("#fff", null, ["bold"]);
-        $this->output->getFormatter()->setStyle("title", $title);
-        $b = new OutputFormatterStyle(null, null, ["bold"]);
-        $this->output->getFormatter()->setStyle("b", $b); 
-
-        if ($action === null) {
-            $this->line("\r\n            <title>\r\n            ░█████╗░██████╗░██╗██╗░░██╗\r\n            ██╔══██╗██╔══██╗██║╚██╗██╔╝\r\n            ███████║██████╔╝██║░╚███╔╝░\r\n            ██╔══██║██╔══██╗██║░██╔██╗░\r\n            ██║░░██║██║░░██║██║██╔╝╚██╗\r\n            ╚═╝░░╚═╝╚═╝░░╚═╝╚═╝╚═╝░░╚═╝\r\n\r\n           Thank you for purchasing Arix</title>\r\n\r\n           > php artisan arix (this window)\r\n           > php artisan arix install\r\n           > php artisan arix update\r\n           > php artisan arix uninstall\r\n            ");
-        } else {
-            $this->info("\n    Arix Theme\n    \n");
-            if ($action === "install") {
-                $this->install();
-            } elseif ($action === "update") {
-                $this->update();
-            } elseif ($action === "uninstall") {
-                $this->uninstall();
-            } else {
-                $this->error("Invalid action. Supported actions: install, update, uninstall");
-            }
-        }
-    } 
-
-    public function installOrUpdate($isUpdate = false)
-    {
-        if ($isUpdate) {
-            $this->info("\n    This command is not recommended to use. \n   This command skips frequently used files by addons during theme updating to avoid losing your addon customizations.\n   If you still experience an error after updating please contact us.");
-        } 
-
-        $confirmation = $this->confirm("Are all the required dependencies installed from the readme file?", "yes");
-        if (!$confirmation) {
-            return;
-        } 
-
-        $versions = File::directories("./arix");
-        if (empty($versions)) {
-            $this->info("No versions found in /arix directory.");
-            return;
-        } 
-
-        $version = basename($this->choice("Select a version:", $versions));
-        $this->info("Installing Arix Theme {$version}..."); 
-
-        $excludeOption = $isUpdate ? "--exclude='routes.ts' --exclude='getServer.ts' --exclude='admin.blade.php' --exclude='admin.php' --exclude='ServerTransformer.php'" : '';
-        exec("rsync -a {$excludeOption} arix/{$version}/ ./"); 
-
-        $directoryPath = app_path("Http/Controllers/Admin/Arix");
-        File::makeDirectory($directoryPath, 0755, true, true); 
-
-        $filesOne = ["ArixController", "ArixAdvancedController", "ArixAnnouncementController", "ArixColorsController", "ArixComponentsController", "ArixDashboardController", "ArixLayoutController"];
-        $this->info("Proceeding with the installation...");
-        foreach ($filesOne as $file) {
-            $this->aa($file, $version, $directoryPath);
-            sleep(1);
-        } 
-
-        $filesTwo = ["ArixLinkController", "ArixMailController", "ArixMetaController", "ArixPresetController", "ArixSocialController", "ArixStylingController"];
-        foreach ($filesTwo as $file) {
-            $this->aa($file, $version, $directoryPath);
-            sleep(1);
-        } 
-
-        $this->info("Migrating database...");
-        $this->command("php artisan migrate --force"); 
-
-        $this->info("Installing required packages...");
-        $this->info("This can take a minute...");
-        $this->command("yarn add react-email-editor react-colorful recharts@^2.15.4 ua-parser-js cronstrue react-day-picker jszip react-turnstile @dnd-kit/core @dnd-kit/sortable @dnd-kit/utilities @types/md5 md5 react-icons@5.4.0 markdown-to-jsx@7.7.10 i18next-browser-languagedetector@7.2.1"); 
-
-        $this->info("Compile translations...");
-        $this->command("php artisan language:compile"); 
-
-        $this->info("Building panel assets...");
-        $this->info("This can take a minute...");
-        $nodeVersion = shell_exec("node -v");
-        $nodeVersion = (int) ltrim($nodeVersion, "v");
-        if ($nodeVersion >= 17) {
-            $this->info("Node.js version is v" . $nodeVersion . " (>= 17)");
-            putenv("NODE_OPTIONS=--openssl-legacy-provider");
-        } else {
-            $this->info("Node.js version is v" . $nodeVersion . " (< 17)");
-        }
-        $this->command("yarn build:production"); 
-
-        $this->info("Set permissions...");
-        $this->command("chown -R www-data:www-data /var/www/pterodactyl/* " . base_path() . "/*");
-        $this->command("chown -R nginx:nginx " . base_path() . "/*");
-        $this->command("chown -R apache:apache " . base_path() . "/*"); 
-
-        $this->info("Optimize application...");
-        $this->command("php artisan optimize:clear");
-        $this->command("php artisan optimize"); 
-
-        $this->info("Restarting workers...");
-        $this->command("php artisan queue:restart"); 
-
-        $message = $isUpdate ? "│    Theme updated successfully   │" : "│   Theme installed successfully  │";
-        $this->line("\n ╭───────────────────────────────╮\n │ │\n │ ╭─╴ {$message} ╶─╮ │\n │ ╰─╴ successfully ╶─╯ │\n │ │\n ╰───────────────────────────────╯\n ");
-    } 
-
-    private function aa($filename, $version, $directoryPath)
-    {
-        $filePath = $directoryPath . "/" . $filename . ".php";
-        $localSource = base_path("arix/" . $version . "/app/Http/Controllers/Admin/Arix/" . $filename . ".php"); 
-
-        if (File::exists($localSource)) {
-            $this->info(" -> Copying local {$filename}.php...");
-            File::copy($localSource, $filePath);
-        } else {
-            $this->error("Fail: Could not find local {$filename}.php at {$localSource}.");
+        if ($action === "install") {
+            $this->info("Installing Arix Theme...");
+            $versions = File::directories("./arix");
+            if (empty($versions)) { $this->info("No versions found."); return; }
+            $version = basename($versions[count($versions) - 1]);
+            exec("rsync -a arix/{$version}/ ./"); 
+            $this->command("php artisan migrate --force");
+            $this->command("yarn add react-email-editor react-colorful recharts@^2.15.4 ua-parser-js cronstrue react-day-picker jszip react-turnstile @dnd-kit/core @dnd-kit/sortable @dnd-kit/utilities @types/md5 md5 react-icons@5.4.0 markdown-to-jsx@7.7.10 i18next-browser-languagedetector@7.2.1");
+            $this->command("php artisan optimize:clear");
+            $this->command("php artisan queue:restart");
+        } elseif ($action === "uninstall") {
+            $this->command("curl -L https://github.com/pterodactyl/panel/releases/latest/download/panel.tar.gz | tar -xzv");
+            $this->command("chmod -R 755 storage/* bootstrap/cache");
+            $this->command("composer install --no-dev --optimize-autoloader");
+            $this->command("php artisan optimize:clear");
+            $this->command("php artisan migrate --seed --force");
         }
     }
-    
-    public function install()
-    {
-        $this->info("Configuring environment...");
-        sleep(1);
-        $this->info("Loading modules...");
-        sleep(1);
-        
-        $this->installOrUpdate();
-        
-        $this->info("Arix Theme installation completed safely!");
-    } 
-
-    public function update()
-    {
-        $this->installOrUpdate(true);
-    } 
-
-    private function uninstall()
-    {
-        $this->line("Uninstalling...");
-        $this->command("php artisan down");
-        $this->command("curl -L https://github.com/pterodactyl/panel/releases/latest/download/panel.tar.gz | tar -xzv");
-        $this->command("chmod -R 755 storage/* bootstrap/cache");
-        $this->command("composer install --no-dev --optimize-autoloader");
-        $this->command("php artisan view:clear");
-        $this->command("php artisan config:clear");
-        $this->command("php artisan migrate --seed --force");
-        $this->command("chown -R www-data:www-data " . base_path() . "/*");
-        $this->command("chown -R nginx:nginx " . base_path() . "/*");
-        $this->command("chown -R apache:apache " . base_path() . "/*");
-        $this->command("php artisan queue:restart");
-        $this->command("php artisan up");
-        $this->info("Arix Theme uninstalled successfully.");
-    } 
-
-    private function command($cmd)
-    {
-        return exec($cmd);
-    }
+    private function command($cmd) { return exec($cmd); }
 }
 EOF
-        php artisan arix install
-    else
-        info "Skipping Arix.php patch for legacy v2.0.8..."
-    fi
-    success "Modules injected!" 
+                    php artisan arix install
+                fi
+                success "Modules injected!" 
 
-    # --- AUTO FIX FOR 2.1.0 ---
-    if [ "$LICENSE_VERSION" == "2.1.0" ]; then
-        step "4/4" "Applying Auto Fixes & Compiling Panel (v2.1.0)..."
-        apply_fixes_function
-    else
-        step "4/4" "Compiling Pterodactyl Panel (Production Build)..."
-        warning "This process takes 2-5 minutes. Please DO NOT close the terminal."
-        (
-            yarn add xterm-addon-unicode11 > /dev/null 2>&1
-            yarn build > /dev/null 2>&1
-        ) & spinner $!
-        success "Panel compiled successfully!" 
-    fi
+                if [ "$LICENSE_VERSION" == "2.1.0" ]; then
+                    step "4/4" "Applying Auto Fixes & Compiling Panel (v2.1.0)..."
+                    apply_fixes_function
+                else
+                    step "4/4" "Compiling Pterodactyl Panel (Production Build)..."
+                    (yarn add xterm-addon-unicode11 > /dev/null 2>&1; yarn build > /dev/null 2>&1) & spinner $!
+                    success "Panel compiled successfully!" 
+                fi
 
+                apply_permissions_function
+                echo -e "\n${GREEN} 🎉 INSTALLATION COMPLETED SUCCESSFULLY! 🎉 ${NC}\n"
+                exit 0
+            fi
+        fi
+    done
+}
+
+# ==========================================
+# 🧩 BLUEPRINT ADDON FUNCTIONS
+# ==========================================
+check_blueprint_framework() {
+    if ! command -v blueprint >/dev/null 2>&1 && [ ! -f "/usr/local/bin/blueprint" ]; then
+        echo -e "\n${RED}[✖] First install Blueprint Framework!${NC}"
+        echo -e "${YELLOW}The Blueprint Framework must be installed on your panel before installing Addons.${NC}\n"
+        read -p "Press Enter to return to the main menu..."
+        return 1
+    fi
+    return 0
+}
+
+is_installed() { [[ -d "/var/www/pterodactyl/storage/extensions/${1%.blueprint}" ]] && return 0 || return 1; }
+is_selected() { [[ " ${selected_indices[*]} " =~ " $1 " ]] && return 0 || return 1; }
+get_title() { echo 'ICAgICAg44CCIOKAjCDigJMgTm9iaXRhLmRldiBDT05UUk9MIEhVQiDigJMg44CCICAgICAg' | base64 -d; }
+
+run_blueprint() {
+    local NAME="$1"
+    local ACTION="$2"
+    cd /var/www/pterodactyl || exit 1
+    
     set +e 
+    if [[ "$ACTION" == "install" ]]; then
+        echo -e "${G}📥 Installing ${NAME%.blueprint}...${N}"
+        wget -q "$ADDON_URL/$NAME" -O "$NAME"
+        if [[ -s "$NAME" ]]; then
+            yes | blueprint -i "$NAME"
+            rm -f "$NAME"
+        else
+            echo -e "${R}Failed to download ${NAME}${N}"
+        fi
+    else
+        echo -e "${R}🗑️ Removing ${NAME%.blueprint}...${N}"
+        yes | blueprint -r "${NAME%.blueprint}"
+    fi
+    set -e
+}
 
-    apply_permissions_function
+show_addon_menu() {
+    clear
+    echo -e "${BC} ╔══════════════════════════════════════════════════════════╗${N}"
+    printf " ${BC}║${BW}%-58s${BC}║${N}\n" "$(get_title)"
+    echo -e "${BC} ╚══════════════════════════════════════════════════════════╝${N}"
+    
+    local count=0
+    for i in "${!ADDON_NAMES[@]}"; do
+        num=$((i+1))
+        clean_name="${ADDON_NAMES[$i]%.blueprint}"
+        
+        is_installed "$clean_name" && status="${BG}●${N}" || status="${R}○${N}"
+        is_selected "$i" && select_mark="${BY}[+]${N}" || select_mark="   "
+        
+        display_name="${clean_name:0:22}"
+        printf " %b ${BG}%2d${N} %-22s %b " "$select_mark" "$num" "$display_name" "$status"
+        
+        ((count++))
+        [[ $((count % 2)) -eq 0 ]] && echo ""
+    done
+    [[ $((count % 2)) -ne 0 ]] && echo ""
+    
+    echo -e "${C} ──────────────────────────────────────────────────────────${N}"
+    echo -e " ${BW}SELECTED:${N} ${BY}${#selected_indices[@]}${N} items"
+    echo -e " ${BG}[i]${N} Install   ${BR}[r]${N} Remove   ${BM}[a]${N} Select All   ${BC}[c]${N} Clear   ${R}[0]${N} Go Back"
+    echo -e " ${Y}Tip: Type 'all' to install everything, or '1,2,3' to select multiple.${N}"
+    echo -e "${C} ──────────────────────────────────────────────────────────${N}"
+}
 
-    # ==========================================
-    # COMPLETION
-    # ==========================================
-    echo ""
-    echo -e "${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
-    typewriter "    🎉 INSTALLATION COMPLETED SUCCESSFULLY! 🎉    "
-    echo -e "${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
-    echo -e "${CYAN} Your Pterodactyl Panel has been updated with Arix v${LICENSE_VERSION} (${LICENSE_TYPE}).${NC}"
-    echo -e "${WHITE} If you encounter any issues, try clearing your browser cache.${NC}\n"
-fi
+run_addon_installer() {
+    # Check for Blueprint Framework first
+    check_blueprint_framework || return
+
+    selected_indices=()
+    while true; do
+        show_addon_menu
+        read -p " 👉 Select ID(s) or Action: " raw_choice
+        
+        # Replace commas with spaces to support "1,2,3" format
+        choice=$(echo "$raw_choice" | tr ',' ' ')
+        
+        # Auto-trigger install for 'all'
+        if [[ "${choice,,}" == "all" ]]; then
+            selected_indices=()
+            for i in "${!ADDON_NAMES[@]}"; do selected_indices+=("$i"); done
+            choice="i"
+        fi
+
+        case $choice in
+            0) break ;;
+            c|C) selected_indices=() ;;
+            a|A) selected_indices=(); for i in "${!ADDON_NAMES[@]}"; do selected_indices+=("$i"); done ;;
+            i|I|r|R)
+                if [[ ${#selected_indices[@]} -eq 0 ]]; then echo -e "${R}Nothing selected!${N}"; sleep 1; continue; fi
+                
+                action_type="install"
+                [[ "$choice" =~ [rR] ]] && action_type="remove"
+                
+                # Identify resourcemanager index
+                local rm_idx=-1
+                for i in "${!ADDON_NAMES[@]}"; do
+                    if [[ "${ADDON_NAMES[$i]}" == "resourcemanager.blueprint" ]]; then
+                        rm_idx=$i
+                        break
+                    fi
+                done
+                
+                # Execute resourcemanager FIRST if it is in the selected list
+                if [[ " ${selected_indices[*]} " =~ " $rm_idx " ]]; then
+                    run_blueprint "${ADDON_NAMES[$rm_idx]}" "$action_type"
+                fi
+                
+                # Execute all other selected addons
+                for idx in "${selected_indices[@]}"; do
+                    if [[ "$idx" != "$rm_idx" ]]; then
+                        run_blueprint "${ADDON_NAMES[$idx]}" "$action_type"
+                    fi
+                done
+                
+                selected_indices=()
+                echo ""
+                read -p "Done. Press Enter to return..."
+                ;;
+            *)
+                for val in $choice; do
+                    if [[ "$val" =~ ^[0-9]+$ ]] && (( val >= 1 && val <= ${#ADDON_NAMES[@]} )); then
+                        idx=$((val-1))
+                        if is_selected "$idx"; then
+                            for i in "${!selected_indices[@]}"; do
+                                [[ ${selected_indices[i]} -eq $idx ]] && unset 'selected_indices[i]'
+                            done
+                            selected_indices=("${selected_indices[@]}")
+                        else
+                            selected_indices+=("$idx")
+                        fi
+                    else
+                        echo -e "${R}Invalid option: $val${N}"; sleep 0.5
+                    fi
+                done
+                ;;
+        esac
+    done
+}
+
+# ==========================================
+# 🚀 MAIN SCRIPT ENTRY (SUPER MENU)
+# ==========================================
+while true; do
+    show_banner
+    echo -e "${WHITE}Select what you want to install:${NC}\n"
+    echo -e "${CYAN}  [ 1 ] ${WHITE}Theme Installer ${GREEN}(Arix)${NC}"
+    echo -e "${CYAN}  [ 2 ] ${WHITE}Theme Addon Installer ${BM}(Blueprint Mods)${NC}"
+    echo -e "${RED}  [ Q ] ${WHITE}Exit${NC}\n"
+    
+    echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
+    read super_choice
+    echo -ne "${NC}"
+    
+    case $super_choice in
+        1) run_theme_installer ;;
+        2) run_addon_installer ;;
+        q|Q) echo -e "\n${GREEN}Exiting... Have a great day!${NC}"; exit 0 ;;
+        *) echo ""; warning "Invalid selection. Try again."; sleep 1 ;;
+    esac
+done
