@@ -4,7 +4,6 @@
 # ==========================================
 [[ $EUID -ne 0 ]] && echo -e "\033[1;31mRun as root!\033[0m" && exit 1
 
-set -e 
 trap 'echo -e "\n\033[1;31m[!] Force exit detected.\033[0m"; exit 1' SIGINT
 
 # ==========================================
@@ -22,18 +21,17 @@ BR="\e[1;31m"; BG="\e[1;32m"; BY="\e[1;33m"; BM="\e[1;35m"; BC="\e[1;36m"; BW="\
 # ==========================================
 _dec() { echo "$1" | base64 -d; }
 
-# API & Addon URLs are now hidden from plain text
 API_URL=$(_dec "aHR0cDovLzc4LjE1NC4xMDMuMjc6MTM5MTUvYXBpL3ZlcmlmeQ==")
 ADDON_URL=$(_dec "aHR0cHM6Ly9naXRodWIuY29tL25vYml0YTMyOS9Ob2JpdGEtQ2xvdWQvcmF3L3JlZnMvaGVhZHMvbWFpbi90aGFtZS9FeHRlbnNpb24=")
 
-DOWNLOAD_URL=""
+ACTION=""
 LICENSE_TYPE=""
 LICENSE_VERSION=""
-ACTION=""
+DOWNLOAD_URL=""
 selected_indices=()
 
 # ==========================================
-# 🧠 BLUEPRINT ADDON LIST (Deduplicated & Alphabetical)
+# 🧠 BLUEPRINT ADDON LIST 
 # ==========================================
 ADDON_NAMES=(
     "autobackups.blueprint"
@@ -103,7 +101,6 @@ show_banner() {
 # ==========================================
 check_dependencies() {
     info "Verifying Node.js and Yarn requirements..."
-    set +e
     if command -v node >/dev/null 2>&1; then
         NODE_VER=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
         if [ "$NODE_VER" -lt 22 ]; then
@@ -124,7 +121,6 @@ check_dependencies() {
     else
         success "Yarn is already installed."
     fi
-    set -e
 } 
 
 verify_license() {
@@ -202,26 +198,18 @@ import { LinkCategory, LinkItem } from '@/api/admin/Link';
 import { useTranslation } from 'react-i18next';
 import { StarIcon } from '@heroicons/react/solid'; 
 
-// --- BLUEPRINT IMPORTS ---
 import blueprintRoutes from '@blueprint/extends/routers/routes';
 import { HiOutlineAdjustments, HiAdjustments } from 'react-icons/hi';
 import { LuSlidersVertical } from 'react-icons/lu';
 import { RiSoundModuleLine, RiSoundModuleFill } from 'react-icons/ri'; 
 
-// --- CUSTOM ICON IMPORTS ---
 import { 
     FaEdit, FaGlobe, FaCogs, FaCodeBranch, FaBoxOpen, FaPlug, 
     FaMap, FaUsers, FaFileImport, FaPuzzlePiece, FaLayerGroup, 
     FaCube, FaRocket, FaBolt, FaTerminal, FaArchive, FaDatabase, FaCalendarAlt 
 } from 'react-icons/fa';
 
-const ICON_MAP: Record<string, number> = {
-    heroicons: 0,
-    heroiconsFilled: 1,
-    lucide: 2,
-    remixicon: 3,
-    remixiconFilled: 4,
-};
+const ICON_MAP: Record<string, number> = { heroicons: 0, heroiconsFilled: 1, lucide: 2, remixicon: 3, remixiconFilled: 4 };
 
 const shouldDisplayRoute = (route: any, nestId?: number, eggId?: number): boolean => {
     const hasNestMatch = route.nestIds?.includes(nestId ?? 0) || route.nestId === nestId;
@@ -245,46 +233,32 @@ const usePathBuilder = () => {
     };
 }; 
 
-const getAdjustedPath = (path: string, isDashboardDisabled: boolean) =>
-    path === '/console' && isDashboardDisabled ? '/' : path; 
+const getAdjustedPath = (path: string, isDashboardDisabled: boolean) => path === '/console' && isDashboardDisabled ? '/' : path; 
 
 const Link = (props: LinkItem) => {
     const { t } = useTranslation('arix/navigation');
     const { nestId, eggId, tier } = useServerIds();
-    const tierVisibility = useStoreState(
-        (state: ApplicationStore) => state.settings.data?.arix?.advanced?.tierVisibility ?? 'show'
-    ); 
+    const tierVisibility = useStoreState((state: ApplicationStore) => state.settings.data?.arix?.advanced?.tierVisibility ?? 'show'); 
 
     const permissions = (props.permission ?? []).filter((permission) => permission && permission.trim().length > 0);
     const hasPermissions = permissions.length > 0; 
-
     const hasNestRestrictions = Array.isArray(props.nests) && props.nests.length > 0;
     const hasEggRestrictions = Array.isArray(props.eggs) && props.eggs.length > 0;
     const hasTierRestrictions = Array.isArray(props.tier) && props.tier.length > 0; 
-
     const nestMatches = hasNestRestrictions && typeof nestId === 'number' && props.nests?.includes(nestId) === true;
     const eggMatches = hasEggRestrictions && typeof eggId === 'number' && props.eggs?.includes(eggId) === true;
-    const tierMatches =
-        hasTierRestrictions && tier !== null && tier !== undefined && props.tier?.includes(tier) === true; 
-
+    const tierMatches = hasTierRestrictions && tier !== null && tier !== undefined && props.tier?.includes(tier) === true; 
     const hasRestrictions = hasNestRestrictions || hasEggRestrictions || hasTierRestrictions; 
-
-    const showStar =
-        hasTierRestrictions && tier !== null && tier !== undefined && !tierMatches && tierVisibility === 'show';
-    const shouldHide =
-        hasTierRestrictions && tier !== null && tier !== undefined && !tierMatches && tierVisibility === 'hidden'; 
+    const showStar = hasTierRestrictions && tier !== null && tier !== undefined && !tierMatches && tierVisibility === 'show';
+    const shouldHide = hasTierRestrictions && tier !== null && tier !== undefined && !tierMatches && tierVisibility === 'hidden'; 
 
     const buildPath = usePathBuilder(); 
-
     if (hasRestrictions && !nestMatches && !eggMatches && shouldHide) return null;
 
     const starIcon = showStar ? <StarIcon className='w-3 text-yellow-500' /> : null; 
-
     const linkContent = (
         <>
-            <div className='routers_link_icon'>
-                <Icon name={props.icon} size='1.25rem' />
-            </div>
+            <div className='routers_link_icon'><Icon name={props.icon} size='1.25rem' /></div>
             <span className='routers_link_title'>{t(props.name)}</span>
             {starIcon}
         </>
@@ -292,20 +266,11 @@ const Link = (props: LinkItem) => {
 
     const inner = props.url.includes('http') ? (
         <div className='relative'>
-            <a key={props.name} href={props.url} target='_blank' rel='noreferrer' className='routers_link'>
-                {linkContent}
-            </a>
+            <a key={props.name} href={props.url} target='_blank' rel='noreferrer' className='routers_link'>{linkContent}</a>
         </div>
     ) : (
         <div className='relative'>
-            <NavLink
-                key={props.name}
-                to={buildPath(props.url, true)}
-                exact={props.url === '/'}
-                className='routers_link'
-            >
-                {linkContent}
-            </NavLink>
+            <NavLink key={props.name} to={buildPath(props.url, true)} exact={props.url === '/'} className='routers_link'>{linkContent}</NavLink>
         </div>
     ); 
 
@@ -330,9 +295,7 @@ const Category = (props: LinkCategory) => {
             <div key={props.name} className='routers_category-wrapper'>
                 <span className='routers_category'>{t(props.name)}</span>
                 <div className='routers_links'>
-                    {props.links.map((link) => (
-                        <Link key={link.name} {...link} />
-                    ))}
+                    {props.links.map((link) => <Link key={link.name} {...link} />)}
                 </div>
             </div>
         </Can>
@@ -340,9 +303,7 @@ const Category = (props: LinkCategory) => {
         <div className='routers_category-wrapper'>
             <span className='routers_category'>{t(props.name)}</span>
             <div className='routers_links'>
-                {props.links.map((link) => (
-                    <Link key={link.name} {...link} />
-                ))}
+                {props.links.map((link) => <Link key={link.name} {...link} />)}
             </div>
         </div>
     );
@@ -354,7 +315,6 @@ const useExtensionEggs = () => {
     const [extensionEggs, setExtensionEggs] = useState<{ [x: string]: string[] }>(
         blueprintExtensions.reduce((prev, current) => ({ ...prev, [current]: ['-1'] }), {})
     ); 
-
     useEffect(() => {
         (async () => {
             const newEggs: { [x: string]: string[] } = {};
@@ -362,14 +322,11 @@ const useExtensionEggs = () => {
                 try {
                     const resp = await fetch(`/api/client/extensions/blueprint/eggs?${new URLSearchParams({ id })}`);
                     newEggs[id] = (await resp.json()) as string[];
-                } catch (e) {
-                    newEggs[id] = ['-1'];
-                }
+                } catch (e) { newEggs[id] = ['-1']; }
             }
             setExtensionEggs(newEggs);
         })();
     }, []); 
-
     return extensionEggs;
 }; 
 
@@ -390,13 +347,10 @@ const useBlueprintServerRoutes = () => {
     }, [rootAdmin, serverEgg, extensionEggs]);
 }; 
 
-const getRouteKey = (route: any) => {
-    return `${route.name || ''} ${route.path || ''} ${route.identifier || ''}`.toLowerCase();
-};
+const getRouteKey = (route: any) => `${route.name || ''} ${route.path || ''} ${route.identifier || ''}`.toLowerCase();
 
 const renderBlueprintIcon = (route: any, iconType: string) => {
     const key = getRouteKey(route); 
-
     if (key.includes('plugin')) return <FaPlug size="1.25rem" />;
     if (key.includes('mod')) return <FaBoxOpen size="1.25rem" />;
     if (key.includes('version')) return <FaCodeBranch size="1.25rem" />;
@@ -404,7 +358,6 @@ const renderBlueprintIcon = (route: any, iconType: string) => {
     if (key.includes('player') || key.includes('user')) return <FaUsers size="1.25rem" />;
     if (key.includes('world') || key.includes('map')) return <FaMap size="1.25rem" />;
     if (key.includes('icon') || key.includes('import')) return <FaFileImport size="1.25rem" />;
-    
     if (key.includes('motd')) return <FaEdit size="1.25rem" />;
     if (key.includes('subdomain') || key.includes('domain')) return <FaGlobe size="1.25rem" />;
     if (key.includes('backup') || key.includes('archive')) return <FaArchive size="1.25rem" />;
@@ -412,18 +365,11 @@ const renderBlueprintIcon = (route: any, iconType: string) => {
     if (key.includes('schedule') || key.includes('task')) return <FaCalendarAlt size="1.25rem" />; 
 
     const genericIcons = [
-        <FaPuzzlePiece size="1.25rem" />, 
-        <FaLayerGroup size="1.25rem" />, 
-        <FaCube size="1.25rem" />, 
-        <FaRocket size="1.25rem" />, 
-        <FaBolt size="1.25rem" />, 
-        <FaTerminal size="1.25rem" />
+        <FaPuzzlePiece size="1.25rem" />, <FaLayerGroup size="1.25rem" />, <FaCube size="1.25rem" />, 
+        <FaRocket size="1.25rem" />, <FaBolt size="1.25rem" />, <FaTerminal size="1.25rem" />
     ];
-    
     let hash = 0;
-    for (let i = 0; i < key.length; i++) {
-        hash = key.charCodeAt(i) + ((hash << 5) - hash);
-    }
+    for (let i = 0; i < key.length; i++) { hash = key.charCodeAt(i) + ((hash << 5) - hash); }
     return genericIcons[Math.abs(hash) % genericIcons.length];
 }; 
 
@@ -434,13 +380,10 @@ const BlueprintLink = ({ route }: { route: any }) => {
     
     const inner = (
         <NavLink to={buildPath(route.path, true)} exact={route.exact} className='routers_link'>
-            <div className='routers_link_icon'>
-                {renderBlueprintIcon(route, iconType)}
-            </div>
+            <div className='routers_link_icon'>{renderBlueprintIcon(route, iconType)}</div>
             <span className='routers_link_title'>{t(route.name) || route.name}</span>
         </NavLink>
     ); 
-
     return route.permission ? <Can action={route.permission} matchAny>{inner}</Can> : inner;
 };
 
@@ -470,16 +413,12 @@ export const Navigation = () => {
 
     return (
         <React.Fragment>
-            {Object.values(links).map((category, index) => (
-                <Category key={index} {...category} />
-            ))} 
+            {Object.values(links).map((category, index) => <Category key={index} {...category} />)} 
             {sortedBlueprintRoutes.length > 0 && (
                 <div className='routers_category-wrapper'>
                     <span className='routers_category'>Extensions</span>
                     <div className='routers_links'>
-                        {sortedBlueprintRoutes.map((route) => (
-                            <BlueprintLink key={route.path} route={route} />
-                        ))}
+                        {sortedBlueprintRoutes.map((route) => <BlueprintLink key={route.path} route={route} />)}
                     </div>
                 </div>
             )}
@@ -496,14 +435,10 @@ export const ComponentLoader = () => {
     const blueprintServerRoutes = useBlueprintServerRoutes(); 
 
     const canShowWithTier = (routePath: string): boolean => {
-        const link = Object.values(links ?? {})
-            .flatMap((category) => category.links)
-            .find((link) => link.url === routePath); 
-
+        const link = Object.values(links ?? {}).flatMap((category) => category.links).find((link) => link.url === routePath); 
         if (!link) return true;
         if (!Array.isArray(link.tier) || link.tier.length === 0) return true;
         if (tier == null) return true; 
-
         return link.tier.includes(tier);
     }; 
 
@@ -513,25 +448,18 @@ export const ComponentLoader = () => {
                 {routes.server.map((route) => {
                     if (!shouldDisplayRoute(route, nestId, eggId)) return null;
                     if (route.path === '/' && !dashboardPage) return null; 
-
                     const path = getAdjustedPath(route.path, !dashboardPage);
                     const Component = route.component; 
-
                     if (!canShowWithTier(path)) return <PremiumFeature />; 
-
                     return (
                         <PermissionRoute key={path} permission={route.permission} path={buildPath(path)} exact>
-                            <Spinner.Suspense>
-                                <Component />
-                            </Spinner.Suspense>
+                            <Spinner.Suspense><Component /></Spinner.Suspense>
                         </PermissionRoute>
                     );
                 })} 
                 {blueprintServerRoutes.map(({ path, permission, component: Component }) => (
                     <PermissionRoute key={path} permission={permission} path={buildPath(path)} exact>
-                        <Spinner.Suspense>
-                            <Component />
-                        </Spinner.Suspense>
+                        <Spinner.Suspense><Component /></Spinner.Suspense>
                     </PermissionRoute>
                 ))} 
                 <Route path={'*'} component={NotFound} />
@@ -559,8 +487,6 @@ import Announcement from '@/components/elements/Announcement';
 import { useStoreState } from 'easy-peasy';
 import { ApplicationStore } from '@/state';
 import { useTranslation } from 'react-i18next'; 
-
-// --- BLUEPRINT IMPORTS ---
 import BeforeSubNavigation from '@blueprint/components/Navigation/SubNavigation/BeforeSubNavigation';
 import AdditionalAccountItems from '@blueprint/components/Navigation/SubNavigation/AdditionalAccountItems';
 import AfterSubNavigation from '@blueprint/components/Navigation/SubNavigation/AfterSubNavigation';
@@ -584,28 +510,14 @@ export default () => {
                             <p className={'text-lg font-medium text-gray-300'}>{t('account-settings')}</p>
                         </div>
                         <div className='flex items-center gap-x-8'> 
-
                             <BeforeSubNavigation /> 
-
-                            <NavLink to={'/account'} className={'border-b border-transparent py-2 flex items-center gap-1 hover:text-gray-100 duration-300'} activeClassName={'!border-arix text-gray-100'} exact>
-                                <CogIcon className={'w-5'} />{t('general')}
-                            </NavLink>
-                            <NavLink to={'/account/security'} className={'border-b border-transparent py-2 flex items-center gap-1 hover:text-gray-100 duration-300'} activeClassName={'!border-arix text-gray-100'}>
-                                <LockClosedIcon className={'w-5'} />{t('security')}
-                            </NavLink>
-                            <NavLink to={'/account/ssh-keys'} className={'border-b border-transparent py-2 flex items-center gap-1 hover:text-gray-100 duration-300'} activeClassName={'!border-arix text-gray-100'}>
-                                <KeyIcon className={'w-5'} />{t('ssh-keys')}
-                            </NavLink>
-                            <NavLink to={'/account/api-keys'} className={'border-b border-transparent py-2 flex items-center gap-1 hover:text-gray-100 duration-300'} activeClassName={'!border-arix text-gray-100'}>
-                                <CodeIcon className={'w-5'} />{t('api-keys')}
-                            </NavLink>
-                            <NavLink to={'/account/activity'} className={'border-b border-transparent py-2 flex items-center gap-1 hover:text-gray-100 duration-300'} activeClassName={'!border-arix text-gray-100'}>
-                                <EyeIcon className={'w-5'} />{t('activity')}
-                            </NavLink> 
-
+                            <NavLink to={'/account'} className={'border-b border-transparent py-2 flex items-center gap-1 hover:text-gray-100 duration-300'} activeClassName={'!border-arix text-gray-100'} exact><CogIcon className={'w-5'} />{t('general')}</NavLink>
+                            <NavLink to={'/account/security'} className={'border-b border-transparent py-2 flex items-center gap-1 hover:text-gray-100 duration-300'} activeClassName={'!border-arix text-gray-100'}><LockClosedIcon className={'w-5'} />{t('security')}</NavLink>
+                            <NavLink to={'/account/ssh-keys'} className={'border-b border-transparent py-2 flex items-center gap-1 hover:text-gray-100 duration-300'} activeClassName={'!border-arix text-gray-100'}><KeyIcon className={'w-5'} />{t('ssh-keys')}</NavLink>
+                            <NavLink to={'/account/api-keys'} className={'border-b border-transparent py-2 flex items-center gap-1 hover:text-gray-100 duration-300'} activeClassName={'!border-arix text-gray-100'}><CodeIcon className={'w-5'} />{t('api-keys')}</NavLink>
+                            <NavLink to={'/account/activity'} className={'border-b border-transparent py-2 flex items-center gap-1 hover:text-gray-100 duration-300'} activeClassName={'!border-arix text-gray-100'}><EyeIcon className={'w-5'} />{t('activity')}</NavLink> 
                             <AdditionalAccountItems />
                             <AfterSubNavigation /> 
-
                         </div>
                     </ContentContainer>
                 </div>
@@ -614,22 +526,10 @@ export default () => {
             <TransitionRouter>
                 <React.Suspense fallback={<Spinner centered />}>
                     <Switch location={location}>
-                        <Route path={'/'} exact>
-                            <DashboardContainer />
-                        </Route>
-                        {routes.account.map(({ path, component: Component }) => (
-                            <Route key={path} path={`/account/${path}`.replace('//', '/')} exact>
-                                <Component />
-                            </Route>
-                        ))} 
-                        {(blueprintRoutes.account || []).map(({ path, component: Component }) => (
-                            <Route key={path} path={`/account/${path}`.replace('//', '/')} exact>
-                                <Component />
-                            </Route>
-                        ))} 
-                        <Route path={'*'}>
-                            <NotFound />
-                        </Route>
+                        <Route path={'/'} exact><DashboardContainer /></Route>
+                        {routes.account.map(({ path, component: Component }) => <Route key={path} path={`/account/${path}`.replace('//', '/')} exact><Component /></Route>)} 
+                        {(blueprintRoutes.account || []).map(({ path, component: Component }) => <Route key={path} path={`/account/${path}`.replace('//', '/')} exact><Component /></Route>)} 
+                        <Route path={'*'}><NotFound /></Route>
                     </Switch>
                 </React.Suspense>
             </TransitionRouter>
@@ -692,10 +592,7 @@ const AppearanceWrapper = () => {
 
     const ToggleRow = ({ label, description, offLabel, onLabel, value, onToggle, name }: any) => (
         <div className={'flex justify-between items-center'}>
-            <div>
-                <p className={'text-gray-100 mb-1'}>{label}</p>
-                <p className='text-sm text-gray-300'>{description}</p>
-            </div>
+            <div><p className={'text-gray-100 mb-1'}>{label}</p><p className='text-sm text-gray-300'>{description}</p></div>
             <div className={'flex gap-x-2 items-center'}>
                 <span className={'text-sm text-gray-300'}>{offLabel ?? 'Off'}</span>
                 <Switch name={name} onChange={() => onToggle(!value)} defaultChecked={value} />
@@ -709,23 +606,15 @@ const AppearanceWrapper = () => {
             <div className='space-y-5'>
                 {langSwitch && languages.length > 1 && (
                     <div className={'flex justify-between items-center'}>
-                        <div className='flex-1'>
-                            <p className={'text-gray-100 mb-1'}>Panel Language</p>
-                            <p className='text-sm text-gray-300'>Use the panel in different languages</p>
-                        </div>
+                        <div className='flex-1'><p className={'text-gray-100 mb-1'}>Panel Language</p><p className='text-sm text-gray-300'>Use the panel in different languages</p></div>
                         <Select value={selectedLanguage} className={'!w-auto min-w-40 !pr-10'} onChange={handleLanguageChange}>
-                            {languages.map((lang: { key: string; name: string }) => (
-                                <option key={lang.key} value={lang.key}>{lang.name}</option>
-                            ))}
+                            {languages.map((lang: { key: string; name: string }) => <option key={lang.key} value={lang.key}>{lang.name}</option>)}
                         </Select>
                     </div>
                 )}
                 {modeToggler && (
                     <div className={'flex justify-between items-center'}>
-                        <div className='flex-1'>
-                            <p className={'text-gray-100 mb-1'}>Light/Dark Mode</p>
-                            <p className='text-sm text-gray-300'>Choose the style that suits you best</p>
-                        </div>
+                        <div className='flex-1'><p className={'text-gray-100 mb-1'}>Light/Dark Mode</p><p className='text-sm text-gray-300'>Choose the style that suits you best</p></div>
                         <Button.Text className={`flex gap-1 !rounded-r-none min-w-20 ${theme === 'light' ? '!bg-gray-500' : ''}`} onClick={() => setTheme('light')}><SunIcon className='w-5' /> Light</Button.Text>
                         <Button.Text className={`flex gap-1 !rounded-none min-w-20 ${theme === 'darkmode' ? '!bg-gray-500' : ''}`} onClick={() => setTheme('darkmode')}><MoonIcon className='w-5' /> Dark</Button.Text>
                         <Button.Text className={`flex gap-1 !rounded-none min-w-20 ${theme === 'oled' ? '!bg-gray-500' : ''}`} onClick={() => setTheme('oled')}><EyeIcon className='w-5' /> Oled</Button.Text>
@@ -791,15 +680,15 @@ menu_action_210() {
         echo -e "${CYAN}  [ 1 ] ${WHITE}Install + Auto Fix"
         echo -e "${CYAN}  [ 2 ] ${WHITE}Uninstall"
         echo -e "${CYAN}  [ 3 ] ${WHITE}Fixes Issues ${YELLOW}(For already installed panels)${NC}"
-        echo -e "${CYAN}  [ 4 ] ${WHITE}Go Back${NC}\n"
+        echo -e "${CYAN}  [ 0 ] ${WHITE}Go Back${NC}\n"
         
         echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
         read action_choice
         case $action_choice in
-            1) ACTION="install"; break 2 ;;
-            2) ACTION="uninstall"; break 2 ;;
-            3) ACTION="fix"; break 2 ;;
-            4) ACTION=""; break ;;
+            1) ACTION="install"; return 0 ;;
+            2) ACTION="uninstall"; return 0 ;;
+            3) ACTION="fix"; return 0 ;;
+            0) ACTION=""; return 0 ;;
             *) warning "Invalid selection."; sleep 1 ;;
         esac
     done
@@ -811,137 +700,118 @@ menu_action_208() {
         echo -e "${WHITE}Select Action for ${GREEN}Arix v2.0.8 ($LICENSE_TYPE)${WHITE}:${NC}\n"
         echo -e "${CYAN}  [ 1 ] ${WHITE}Install"
         echo -e "${CYAN}  [ 2 ] ${WHITE}Uninstall"
-        echo -e "${CYAN}  [ 3 ] ${WHITE}Go Back${NC}\n"
+        echo -e "${CYAN}  [ 0 ] ${WHITE}Go Back${NC}\n"
         
         echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
         read action_choice
         case $action_choice in
-            1) ACTION="install"; break 2 ;;
-            2) ACTION="uninstall"; break 2 ;;
-            3) ACTION=""; break ;;
+            1) ACTION="install"; return 0 ;;
+            2) ACTION="uninstall"; return 0 ;;
+            0) ACTION=""; return 0 ;;
             *) warning "Invalid selection."; sleep 1 ;;
         esac
     done
 }
 
-run_theme_installer() {
+menu_edition_210() {
     while true; do
         show_banner
-        typewriter " Welcome to the Arix Theme setup. Select Version:"
-        echo ""
-        echo -e "${CYAN}  [ 1 ] ${WHITE}Arix v2.1.0 ${GREEN}(Latest)${NC}"
-        echo -e "${CYAN}  [ 2 ] ${WHITE}Arix v2.0.8 ${YELLOW}(Legacy)${NC}"
-        echo -e "${RED}  [ Q ] ${WHITE}Go Back${NC}\n"
+        echo -e "${WHITE}Select Edition for ${GREEN}Arix v2.1.0${WHITE}:${NC}\n"
+        echo -e "${CYAN}  [ 1 ] ${WHITE}Standard Edition (Non-Blueprint)"
+        echo -e "${CYAN}  [ 2 ] ${WHITE}Blueprint Edition"
+        echo -e "${CYAN}  [ 0 ] ${WHITE}Go Back${NC}\n"
         
         echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
-        read main_choice
-        
-        case $main_choice in
-            1)
-                while true; do
-                    show_banner
-                    echo -e "${WHITE}Select Edition for ${GREEN}Arix v2.1.0${WHITE}:${NC}\n"
-                    echo -e "${CYAN}  [ 1 ] ${WHITE}Standard Edition (Non-Blueprint)"
-                    echo -e "${CYAN}  [ 2 ] ${WHITE}Blueprint Edition"
-                    echo -e "${CYAN}  [ 3 ] ${WHITE}Go Back${NC}\n"
-                    echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
-                    read choice_210
-                    case $choice_210 in
-                        1) 
-                            LICENSE_TYPE="non-blueprint"
-                            LICENSE_VERSION="2.1.0"
-                            DOWNLOAD_URL=$(_dec "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3NkZ2FtZXI4MjYzLXNrZXRjaC9wdGVyb2RhY3R5bF9leHRlbnRpb24xL21haW4vc2QvdjIxMC9wdGVyb2RhY3R5bC56aXA=")
-                            menu_action_210
-                            [[ -n "$ACTION" ]] && break 2 
-                            ;;
-                        2) 
-                            LICENSE_TYPE="blueprint"
-                            LICENSE_VERSION="2.1.0"
-                            DOWNLOAD_URL=$(_dec "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3NkZ2FtZXI4MjYzLXNrZXRjaC9wdGVyb2RhY3R5bF9leHRlbnRpb24xL21haW4vcHRlcm9kYWN0eWwuemlw")
-                            menu_action_210
-                            [[ -n "$ACTION" ]] && break 2 
-                            ;;
-                        3) break ;;
-                        *) warning "Invalid selection."; sleep 1 ;;
-                    esac
-                done
+        read choice_210
+        case $choice_210 in
+            1) 
+                LICENSE_TYPE="non-blueprint"; LICENSE_VERSION="2.1.0"
+                DOWNLOAD_URL=$(_dec "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3NkZ2FtZXI4MjYzLXNrZXRjaC9wdGVyb2RhY3R5bF9leHRlbnRpb24xL21haW4vc2QvdjIxMC9wdGVyb2RhY3R5bC56aXA=")
+                menu_action_210
+                [[ -n "$ACTION" ]] && return 0
                 ;;
-            2)
-                while true; do
-                    show_banner
-                    echo -e "${WHITE}Select Edition for ${GREEN}Arix v2.0.8${WHITE}:${NC}\n"
-                    echo -e "${CYAN}  [ 1 ] ${WHITE}Standard Edition (Non-Blueprint)"
-                    echo -e "${CYAN}  [ 2 ] ${WHITE}Blueprint Edition"
-                    echo -e "${CYAN}  [ 3 ] ${WHITE}Go Back${NC}\n"
-                    echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
-                    read choice_208
-                    case $choice_208 in
-                        1) 
-                            LICENSE_TYPE="non-blueprint"
-                            LICENSE_VERSION="2.0.8"
-                            DOWNLOAD_URL=$(_dec "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3NkZ2FtZXI4MjYzLXNrZXRjaC9wdGVyb2RhY3R5bF9leHRlbnRpb24xL21haW4vc2QvdjIwOC9wdGVyb2RhY3R5bC56aXA=")
-                            menu_action_208
-                            [[ -n "$ACTION" ]] && break 2 
-                            ;;
-                        2) 
-                            LICENSE_TYPE="blueprint"
-                            LICENSE_VERSION="2.0.8"
-                            DOWNLOAD_URL=$(_dec "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3NkZ2FtZXI4MjYzLXNrZXRjaC9wdGVyb2RhY3R5bF9leHRlbnRpb24xL21haW4vc2QvYXYxcHRlcm9kYWN0eWwuemlw")
-                            menu_action_208
-                            [[ -n "$ACTION" ]] && break 2 
-                            ;;
-                        3) break ;;
-                        *) warning "Invalid selection."; sleep 1 ;;
-                    esac
-                done
+            2) 
+                LICENSE_TYPE="blueprint"; LICENSE_VERSION="2.1.0"
+                DOWNLOAD_URL=$(_dec "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3NkZ2FtZXI4MjYzLXNrZXRjaC9wdGVyb2RhY3R5bF9leHRlbnRpb24xL21haW4vcHRlcm9kYWN0eWwuemlw")
+                menu_action_210
+                [[ -n "$ACTION" ]] && return 0
                 ;;
-            q|Q) ACTION=""; break ;;
-            *) warning "Invalid selection. Try again."; sleep 1 ;;
+            0) return 0 ;;
+            *) warning "Invalid selection."; sleep 1 ;;
         esac
+    done
+}
+
+menu_edition_208() {
+    while true; do
+        show_banner
+        echo -e "${WHITE}Select Edition for ${GREEN}Arix v2.0.8${WHITE}:${NC}\n"
+        echo -e "${CYAN}  [ 1 ] ${WHITE}Standard Edition (Non-Blueprint)"
+        echo -e "${CYAN}  [ 2 ] ${WHITE}Blueprint Edition"
+        echo -e "${CYAN}  [ 0 ] ${WHITE}Go Back${NC}\n"
         
-        if [ -n "$ACTION" ]; then
-            # Execute Theme Logic
-            if [ "$ACTION" == "uninstall" ]; then
-                show_banner
-                [[ ! -d "/var/www/pterodactyl" ]] && error "Pterodactyl not found!" && exit 1
-                cd /var/www/pterodactyl
-                step "1/1" "Uninstalling Arix Theme..."
-                php artisan arix uninstall
-                echo -e "\n${GREEN} 🎉 UNINSTALLATION COMPLETED SUCCESSFULLY! 🎉 ${NC}\n"
-                exit 0
-            fi
+        echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
+        read choice_208
+        case $choice_208 in
+            1) 
+                LICENSE_TYPE="non-blueprint"; LICENSE_VERSION="2.0.8"
+                DOWNLOAD_URL=$(_dec "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3NkZ2FtZXI4MjYzLXNrZXRjaC9wdGVyb2RhY3R5bF9leHRlbnRpb24xL21haW4vc2QvdjIwOC9wdGVyb2RhY3R5bC56aXA=")
+                menu_action_208
+                [[ -n "$ACTION" ]] && return 0
+                ;;
+            2) 
+                LICENSE_TYPE="blueprint"; LICENSE_VERSION="2.0.8"
+                DOWNLOAD_URL=$(_dec "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3NkZ2FtZXI4MjYzLXNrZXRjaC9wdGVyb2RhY3R5bF9leHRlbnRpb24xL21haW4vc2QvYXYxcHRlcm9kYWN0eWwuemlw")
+                menu_action_208
+                [[ -n "$ACTION" ]] && return 0
+                ;;
+            0) return 0 ;;
+            *) warning "Invalid selection."; sleep 1 ;;
+        esac
+    done
+}
 
-            if [ "$ACTION" == "fix" ]; then
-                show_banner; check_dependencies
-                [[ ! -d "/var/www/pterodactyl" ]] && error "Pterodactyl not found!" && exit 1
-                cd /var/www/pterodactyl
-                step "1/1" "Applying Auto Fixes & Compiling Panel..."
-                apply_fixes_function
-                apply_permissions_function
-                echo -e "\n${GREEN} 🎉 FIXES APPLIED SUCCESSFULLY! 🎉 ${NC}\n"
-                exit 0
-            fi
+execute_theme_action() {
+    if [ "$ACTION" == "uninstall" ]; then
+        show_banner
+        [[ ! -d "/var/www/pterodactyl" ]] && error "Pterodactyl not found!" && exit 1
+        cd /var/www/pterodactyl
+        step "1/1" "Uninstalling Arix Theme..."
+        php artisan arix uninstall
+        echo -e "\n${GREEN} 🎉 UNINSTALLATION COMPLETED SUCCESSFULLY! 🎉 ${NC}\n"
+        exit 0
+    fi
 
-            if [ "$ACTION" == "install" ]; then
-                show_banner
-                verify_license "$LICENSE_TYPE" "$LICENSE_VERSION"
-                show_banner; check_dependencies 
+    if [ "$ACTION" == "fix" ]; then
+        show_banner; check_dependencies
+        [[ ! -d "/var/www/pterodactyl" ]] && error "Pterodactyl not found!" && exit 1
+        cd /var/www/pterodactyl
+        step "1/1" "Applying Auto Fixes & Compiling Panel..."
+        apply_fixes_function
+        apply_permissions_function
+        echo -e "\n${GREEN} 🎉 FIXES APPLIED SUCCESSFULLY! 🎉 ${NC}\n"
+        exit 0
+    fi
 
-                [[ ! -d "/var/www/pterodactyl" ]] && error "Pterodactyl not found!" && exit 1
-                cd /var/www/pterodactyl 
+    if [ "$ACTION" == "install" ]; then
+        show_banner
+        verify_license "$LICENSE_TYPE" "$LICENSE_VERSION"
+        show_banner; check_dependencies 
 
-                step "1/4" "Downloading Arix Theme Assets..."
-                (curl -sL -o pterodactyl.zip "$DOWNLOAD_URL") & spinner $!
-                success "Downloaded successfully." 
+        [[ ! -d "/var/www/pterodactyl" ]] && error "Pterodactyl not found!" && exit 1
+        cd /var/www/pterodactyl 
 
-                step "2/4" "Extracting Core Files..."
-                ( unzip -o pterodactyl.zip >/dev/null 2>&1; [[ -d "pterodactyl" ]] && cp -rf pterodactyl/* ./ && rm -rf pterodactyl; rm pterodactyl.zip ) & spinner $!
-                success "Files extracted." 
+        step "1/4" "Downloading Arix Theme Assets..."
+        (curl -sL -o pterodactyl.zip "$DOWNLOAD_URL") & spinner $!
+        success "Downloaded successfully." 
 
-                step "3/4" "Injecting Modules..."
-                if [ "$LICENSE_VERSION" == "2.1.0" ]; then
-                    # We inject a simplified Arix.php command controller
-                    cat << 'EOF' > app/Console/Commands/Arix.php
+        step "2/4" "Extracting Core Files..."
+        ( unzip -o pterodactyl.zip >/dev/null 2>&1; [[ -d "pterodactyl" ]] && cp -rf pterodactyl/* ./ && rm -rf pterodactyl; rm pterodactyl.zip ) & spinner $!
+        success "Files extracted." 
+
+        step "3/4" "Injecting Modules..."
+        if [ "$LICENSE_VERSION" == "2.1.0" ]; then
+            cat << 'EOF' > app/Console/Commands/Arix.php
 <?php 
 namespace Pterodactyl\Console\Commands; 
 use Illuminate\Console\Command;
@@ -972,25 +842,46 @@ class Arix extends Command
     private function command($cmd) { return exec($cmd); }
 }
 EOF
-                    php artisan arix install
-                fi
-                success "Modules injected!" 
-
-                if [ "$LICENSE_VERSION" == "2.1.0" ]; then
-                    step "4/4" "Applying Auto Fixes & Compiling Panel (v2.1.0)..."
-                    apply_fixes_function
-                else
-                    step "4/4" "Compiling Pterodactyl Panel (Production Build)..."
-                    (yarn add xterm-addon-unicode11 > /dev/null 2>&1; yarn build > /dev/null 2>&1) & spinner $!
-                    success "Panel compiled successfully!" 
-                fi
-
-                apply_permissions_function
-                echo -e "\n${GREEN} 🎉 INSTALLATION COMPLETED SUCCESSFULLY! 🎉 ${NC}\n"
-                exit 0
-            fi
+            php artisan arix install
         fi
+        success "Modules injected!" 
+
+        if [ "$LICENSE_VERSION" == "2.1.0" ]; then
+            step "4/4" "Applying Auto Fixes & Compiling Panel (v2.1.0)..."
+            apply_fixes_function
+        else
+            step "4/4" "Compiling Pterodactyl Panel (Production Build)..."
+            (yarn add xterm-addon-unicode11 > /dev/null 2>&1; yarn build > /dev/null 2>&1) & spinner $!
+            success "Panel compiled successfully!" 
+        fi
+
+        apply_permissions_function
+        echo -e "\n${GREEN} 🎉 INSTALLATION COMPLETED SUCCESSFULLY! 🎉 ${NC}\n"
+        exit 0
+    fi
+}
+
+run_theme_installer() {
+    while true; do
+        show_banner
+        typewriter " Welcome to the Arix Theme setup. Select Version:"
+        echo ""
+        echo -e "${CYAN}  [ 1 ] ${WHITE}Arix v2.1.0 ${GREEN}(Latest)${NC}"
+        echo -e "${CYAN}  [ 2 ] ${WHITE}Arix v2.0.8 ${YELLOW}(Legacy)${NC}"
+        echo -e "${CYAN}  [ 0 ] ${WHITE}Go Back${NC}\n"
+        
+        echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
+        read main_choice
+        
+        case $main_choice in
+            1) menu_edition_210; [[ -n "$ACTION" ]] && break ;;
+            2) menu_edition_208; [[ -n "$ACTION" ]] && break ;;
+            0) return 0 ;;
+            *) warning "Invalid selection. Try again."; sleep 1 ;;
+        esac
     done
+    
+    execute_theme_action
 }
 
 # ==========================================
@@ -1000,8 +891,6 @@ check_blueprint_framework() {
     if ! command -v blueprint >/dev/null 2>&1 && [ ! -f "/usr/local/bin/blueprint" ]; then
         echo -e "\n${RED}[✖] First install Blueprint Framework!${NC}"
         echo -e "${YELLOW}The Blueprint Framework must be installed on your panel before installing Addons.${NC}\n"
-        
-        # Read with dummy variable to prevent skipping
         read -p "Press Enter to return to the main menu..." dummy
         return 1
     fi
@@ -1017,7 +906,6 @@ run_blueprint() {
     local ACTION="$2"
     cd /var/www/pterodactyl || exit 1
     
-    set +e 
     if [[ "$ACTION" == "install" ]]; then
         echo -e "${G}📥 Installing ${NAME%.blueprint}...${N}"
         wget -q "$ADDON_URL/$NAME" -O "$NAME"
@@ -1031,7 +919,6 @@ run_blueprint() {
         echo -e "${R}🗑️ Removing ${NAME%.blueprint}...${N}"
         yes | blueprint -r "${NAME%.blueprint}"
     fi
-    set -e
 }
 
 show_addon_menu() {
@@ -1064,21 +951,15 @@ show_addon_menu() {
 }
 
 run_addon_installer() {
-    # Check for Blueprint Framework first
-    # Using 'if ! ...' ensures the script doesn't exit due to 'set -e'
-    if ! check_blueprint_framework; then
-        return 0
-    fi
+    if ! check_blueprint_framework; then return 0; fi
 
     selected_indices=()
     while true; do
         show_addon_menu
         read -p " 👉 Select ID(s) or Action: " raw_choice
         
-        # Replace commas with spaces to support "1,2,3" format
         choice=$(echo "$raw_choice" | tr ',' ' ')
         
-        # Auto-trigger install for 'all'
         if [[ "${choice,,}" == "all" ]]; then
             selected_indices=()
             for i in "${!ADDON_NAMES[@]}"; do selected_indices+=("$i"); done
@@ -1095,25 +976,14 @@ run_addon_installer() {
                 action_type="install"
                 [[ "$choice" =~ [rR] ]] && action_type="remove"
                 
-                # Identify resourcemanager index
                 local rm_idx=-1
                 for i in "${!ADDON_NAMES[@]}"; do
-                    if [[ "${ADDON_NAMES[$i]}" == "resourcemanager.blueprint" ]]; then
-                        rm_idx=$i
-                        break
-                    fi
+                    if [[ "${ADDON_NAMES[$i]}" == "resourcemanager.blueprint" ]]; then rm_idx=$i; break; fi
                 done
                 
-                # Execute resourcemanager FIRST if it is in the selected list
-                if [[ " ${selected_indices[*]} " =~ " $rm_idx " ]]; then
-                    run_blueprint "${ADDON_NAMES[$rm_idx]}" "$action_type"
-                fi
-                
-                # Execute all other selected addons
+                if [[ " ${selected_indices[*]} " =~ " $rm_idx " ]]; then run_blueprint "${ADDON_NAMES[$rm_idx]}" "$action_type"; fi
                 for idx in "${selected_indices[@]}"; do
-                    if [[ "$idx" != "$rm_idx" ]]; then
-                        run_blueprint "${ADDON_NAMES[$idx]}" "$action_type"
-                    fi
+                    if [[ "$idx" != "$rm_idx" ]]; then run_blueprint "${ADDON_NAMES[$idx]}" "$action_type"; fi
                 done
                 
                 selected_indices=()
@@ -1149,7 +1019,7 @@ while true; do
     echo -e "${WHITE}Select what you want to install:${NC}\n"
     echo -e "${CYAN}  [ 1 ] ${WHITE}Theme Installer ${GREEN}(Arix)${NC}"
     echo -e "${CYAN}  [ 2 ] ${WHITE}Theme Addon Installer ${BM}(Blueprint Mods)${NC}"
-    echo -e "${RED}  [ Q ] ${WHITE}Exit${NC}\n"
+    echo -e "${CYAN}  [ 0 ] ${WHITE}Exit${NC}\n"
     
     echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
     read super_choice
@@ -1158,7 +1028,7 @@ while true; do
     case $super_choice in
         1) run_theme_installer ;;
         2) run_addon_installer ;;
-        q|Q) echo -e "\n${GREEN}Exiting... Have a great day!${NC}"; exit 0 ;;
+        0) echo -e "\n${GREEN}Exiting... Have a great day!${NC}"; exit 0 ;;
         *) echo ""; warning "Invalid selection. Try again."; sleep 1 ;;
     esac
 done
