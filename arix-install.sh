@@ -4,6 +4,8 @@
 # ==========================================
 [[ $EUID -ne 0 ]] && echo -e "\033[1;31mRun as root!\033[0m" && exit 1
 
+# Make script crash-proof
+set +e 
 trap 'echo -e "\n\033[1;31m[!] Force exit detected.\033[0m"; exit 1' SIGINT
 
 # ==========================================
@@ -126,40 +128,44 @@ check_dependencies() {
 verify_license() {
     local TYPE_REQ=$1
     local VERSION_REQ=$2
-    echo -e "${CYAN}┌──────────────────────────────────────────────┐${NC}"
-    echo -e "${CYAN}│${YELLOW}         🔒 SECURITY VERIFICATION REQUIRED    ${CYAN}│${NC}"
-    echo -e "${CYAN}└──────────────────────────────────────────────┘${NC}\n"
     
-    echo -ne "${MAGENTA} ➜ ${WHITE}Enter your Registered Email: ${CYAN}"
-    read USER_EMAIL
-    echo -ne "${MAGENTA} ➜ ${WHITE}Enter your License Key: ${CYAN}"
-    read USER_KEY
-    echo -ne "${NC}" 
-    
-    echo ""
-    info "Establishing secure connection to licensing server..."
-    
-    USER_IP=$(curl -s ifconfig.me)
-    RESPONSE=$(curl -s -X POST "$API_URL" -H "Content-Type: application/json" -d "{\"email\":\"$USER_EMAIL\", \"key\":\"$USER_KEY\", \"ip\":\"$USER_IP\", \"requestedType\":\"$TYPE_REQ\", \"requestedVersion\":\"$VERSION_REQ\"}")
-    
-    if echo "$RESPONSE" | grep -qE '"success":\s*true'; then
-        SUCCESS="true"
-    else
-        SUCCESS="false"
-    fi
-    
-    MESSAGE=$(echo "$RESPONSE" | sed -n 's/.*"message"\s*:\s*"\([^"]*\)".*/\1/p')
-    [[ -z "$MESSAGE" ]] && MESSAGE="Invalid response from the licensing server."
-
-    if [ "$SUCCESS" != "true" ]; then
+    while true; do
+        show_banner
+        echo -e "${CYAN}┌──────────────────────────────────────────────┐${NC}"
+        echo -e "${CYAN}│${YELLOW}         🔒 SECURITY VERIFICATION REQUIRED    ${CYAN}│${NC}"
+        echo -e "${CYAN}└──────────────────────────────────────────────┘${NC}\n"
+        echo -e "${WHITE}Type ${YELLOW}0${WHITE} to go back to the menu.${NC}\n"
+        
+        echo -ne "${MAGENTA} ➜ ${WHITE}Enter your Registered Email: ${CYAN}"
+        read USER_EMAIL < /dev/tty
+        [[ "$USER_EMAIL" == "0" ]] && return 1
+        
+        echo -ne "${MAGENTA} ➜ ${WHITE}Enter your License Key: ${CYAN}"
+        read USER_KEY < /dev/tty
+        [[ "$USER_KEY" == "0" ]] && return 1
+        echo -ne "${NC}" 
+        
         echo ""
-        error "Authentication Denied: $MESSAGE"
-        exit 1
-    else
-        echo ""
-        success "License Verified! Authorization Granted."
-        sleep 1.5
-    fi
+        info "Establishing secure connection to licensing server..."
+        
+        USER_IP=$(curl -s ifconfig.me)
+        RESPONSE=$(curl -s -X POST "$API_URL" -H "Content-Type: application/json" -d "{\"email\":\"$USER_EMAIL\", \"key\":\"$USER_KEY\", \"ip\":\"$USER_IP\", \"requestedType\":\"$TYPE_REQ\", \"requestedVersion\":\"$VERSION_REQ\"}")
+        
+        if echo "$RESPONSE" | grep -qE '"success":\s*true'; then
+            echo ""
+            success "License Verified! Authorization Granted."
+            sleep 1.5
+            return 0
+        else
+            MESSAGE=$(echo "$RESPONSE" | sed -n 's/.*"message"\s*:\s*"\([^"]*\)".*/\1/p')
+            if [[ -z "$MESSAGE" ]]; then
+                MESSAGE="Invalid Email or Key."
+            fi
+            echo ""
+            error "Authentication Denied: $MESSAGE"
+            read -p "Press Enter to try again..." dummy < /dev/tty
+        fi
+    done
 } 
 
 apply_permissions_function() {
@@ -683,7 +689,7 @@ menu_action_210() {
         echo -e "${CYAN}  [ 0 ] ${WHITE}Go Back${NC}\n"
         
         echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
-        read action_choice
+        read action_choice < /dev/tty
         case $action_choice in
             1) ACTION="install"; return 0 ;;
             2) ACTION="uninstall"; return 0 ;;
@@ -703,7 +709,7 @@ menu_action_208() {
         echo -e "${CYAN}  [ 0 ] ${WHITE}Go Back${NC}\n"
         
         echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
-        read action_choice
+        read action_choice < /dev/tty
         case $action_choice in
             1) ACTION="install"; return 0 ;;
             2) ACTION="uninstall"; return 0 ;;
@@ -722,7 +728,7 @@ menu_edition_210() {
         echo -e "${CYAN}  [ 0 ] ${WHITE}Go Back${NC}\n"
         
         echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
-        read choice_210
+        read choice_210 < /dev/tty
         case $choice_210 in
             1) 
                 LICENSE_TYPE="non-blueprint"; LICENSE_VERSION="2.1.0"
@@ -751,7 +757,7 @@ menu_edition_208() {
         echo -e "${CYAN}  [ 0 ] ${WHITE}Go Back${NC}\n"
         
         echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
-        read choice_208
+        read choice_208 < /dev/tty
         case $choice_208 in
             1) 
                 LICENSE_TYPE="non-blueprint"; LICENSE_VERSION="2.0.8"
@@ -794,8 +800,11 @@ execute_theme_action() {
     fi
 
     if [ "$ACTION" == "install" ]; then
-        show_banner
-        verify_license "$LICENSE_TYPE" "$LICENSE_VERSION"
+        if ! verify_license "$LICENSE_TYPE" "$LICENSE_VERSION"; then
+            ACTION="" 
+            return 0
+        fi
+        
         show_banner; check_dependencies 
 
         [[ ! -d "/var/www/pterodactyl" ]] && error "Pterodactyl not found!" && exit 1
@@ -871,17 +880,15 @@ run_theme_installer() {
         echo -e "${CYAN}  [ 0 ] ${WHITE}Go Back${NC}\n"
         
         echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
-        read main_choice
+        read main_choice < /dev/tty
         
         case $main_choice in
-            1) menu_edition_210; [[ -n "$ACTION" ]] && break ;;
-            2) menu_edition_208; [[ -n "$ACTION" ]] && break ;;
+            1) menu_edition_210; [[ -n "$ACTION" ]] && execute_theme_action ;;
+            2) menu_edition_208; [[ -n "$ACTION" ]] && execute_theme_action ;;
             0) return 0 ;;
             *) warning "Invalid selection. Try again."; sleep 1 ;;
         esac
     done
-    
-    execute_theme_action
 }
 
 # ==========================================
@@ -891,7 +898,7 @@ check_blueprint_framework() {
     if ! command -v blueprint >/dev/null 2>&1 && [ ! -f "/usr/local/bin/blueprint" ]; then
         echo -e "\n${RED}[✖] First install Blueprint Framework!${NC}"
         echo -e "${YELLOW}The Blueprint Framework must be installed on your panel before installing Addons.${NC}\n"
-        read -p "Press Enter to return to the main menu..." dummy
+        read -p "Press Enter to return to the main menu..." dummy < /dev/tty
         return 1
     fi
     return 0
@@ -956,7 +963,7 @@ run_addon_installer() {
     selected_indices=()
     while true; do
         show_addon_menu
-        read -p " 👉 Select ID(s) or Action: " raw_choice
+        read -p " 👉 Select ID(s) or Action: " raw_choice < /dev/tty
         
         choice=$(echo "$raw_choice" | tr ',' ' ')
         
@@ -988,7 +995,7 @@ run_addon_installer() {
                 
                 selected_indices=()
                 echo ""
-                read -p "Done. Press Enter to return..." dummy
+                read -p "Done. Press Enter to return..." dummy < /dev/tty
                 ;;
             *)
                 for val in $choice; do
@@ -1022,7 +1029,7 @@ while true; do
     echo -e "${CYAN}  [ 0 ] ${WHITE}Exit${NC}\n"
     
     echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
-    read super_choice
+    read super_choice < /dev/tty
     echo -ne "${NC}"
     
     case $super_choice in
