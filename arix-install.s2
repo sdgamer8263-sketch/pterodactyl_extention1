@@ -259,7 +259,7 @@ prompt_action() {
         echo -e "${CYAN}  [ 2 ] ${WHITE}Uninstall Theme"
         
         if [ "$version" == "2.1.0" ]; then
-            echo -e "${CYAN}  [ 3 ] ${WHITE}Fix Issues"
+            echo -e "${CYAN}  [ 3 ] ${WHITE}Fix Issues(ALREAY INSTALLED PANEL)"
             echo -e "${CYAN}  [ 4 ] ${WHITE}Go Back${NC}\n"
         else
             echo -e "${CYAN}  [ 3 ] ${WHITE}Go Back${NC}\n"
