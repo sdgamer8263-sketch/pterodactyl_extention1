@@ -134,15 +134,15 @@ verify_license() {
         echo -e "${CYAN}┌──────────────────────────────────────────────┐${NC}"
         echo -e "${CYAN}│${YELLOW}         🔒 SECURITY VERIFICATION REQUIRED    ${CYAN}│${NC}"
         echo -e "${CYAN}└──────────────────────────────────────────────┘${NC}\n"
-        echo -e "${WHITE}Type ${YELLOW}0${WHITE} to go back to the menu.${NC}\n"
+        echo -e "${WHITE}Type ${YELLOW}0${WHITE} or ${YELLOW}exit${WHITE} to go back to the menu.${NC}\n"
         
         echo -ne "${MAGENTA} ➜ ${WHITE}Enter your Registered Email: ${CYAN}"
-        read USER_EMAIL < /dev/tty
-        [[ "$USER_EMAIL" == "0" ]] && return 1
+        read -r USER_EMAIL </dev/tty || read -r USER_EMAIL || USER_EMAIL="0"
+        [[ "$USER_EMAIL" == "0" || "${USER_EMAIL,,}" == "exit" ]] && return 1
         
         echo -ne "${MAGENTA} ➜ ${WHITE}Enter your License Key: ${CYAN}"
-        read USER_KEY < /dev/tty
-        [[ "$USER_KEY" == "0" ]] && return 1
+        read -r USER_KEY </dev/tty || read -r USER_KEY || USER_KEY="0"
+        [[ "$USER_KEY" == "0" || "${USER_KEY,,}" == "exit" ]] && return 1
         echo -ne "${NC}" 
         
         echo ""
@@ -163,7 +163,7 @@ verify_license() {
             fi
             echo ""
             error "Authentication Denied: $MESSAGE"
-            read -p "Press Enter to try again..." dummy < /dev/tty
+            read -r -p "Press Enter to try again..." dummy </dev/tty || true
         fi
     done
 } 
@@ -677,137 +677,52 @@ EOF
 }
 
 # ==========================================
-# 🛠️ ARIX THEME MENUS
+# 🛠️ THEME EXECUTION LOGIC (WITH RETURN LOOP)
 # ==========================================
-menu_action_210() {
-    while true; do
-        show_banner
-        echo -e "${WHITE}Select Action for ${GREEN}Arix v2.1.0 ($LICENSE_TYPE)${WHITE}:${NC}\n"
-        echo -e "${CYAN}  [ 1 ] ${WHITE}Install + Auto Fix"
-        echo -e "${CYAN}  [ 2 ] ${WHITE}Uninstall"
-        echo -e "${CYAN}  [ 3 ] ${WHITE}Fixes Issues ${YELLOW}(For already installed panels)${NC}"
-        echo -e "${CYAN}  [ 0 ] ${WHITE}Go Back${NC}\n"
-        
-        echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
-        read action_choice < /dev/tty
-        case $action_choice in
-            1) ACTION="install"; return 0 ;;
-            2) ACTION="uninstall"; return 0 ;;
-            3) ACTION="fix"; return 0 ;;
-            0) ACTION=""; return 0 ;;
-            *) warning "Invalid selection."; sleep 1 ;;
-        esac
-    done
-}
-
-menu_action_208() {
-    while true; do
-        show_banner
-        echo -e "${WHITE}Select Action for ${GREEN}Arix v2.0.8 ($LICENSE_TYPE)${WHITE}:${NC}\n"
-        echo -e "${CYAN}  [ 1 ] ${WHITE}Install"
-        echo -e "${CYAN}  [ 2 ] ${WHITE}Uninstall"
-        echo -e "${CYAN}  [ 0 ] ${WHITE}Go Back${NC}\n"
-        
-        echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
-        read action_choice < /dev/tty
-        case $action_choice in
-            1) ACTION="install"; return 0 ;;
-            2) ACTION="uninstall"; return 0 ;;
-            0) ACTION=""; return 0 ;;
-            *) warning "Invalid selection."; sleep 1 ;;
-        esac
-    done
-}
-
-menu_edition_210() {
-    while true; do
-        show_banner
-        echo -e "${WHITE}Select Edition for ${GREEN}Arix v2.1.0${WHITE}:${NC}\n"
-        echo -e "${CYAN}  [ 1 ] ${WHITE}Standard Edition (Non-Blueprint)"
-        echo -e "${CYAN}  [ 2 ] ${WHITE}Blueprint Edition"
-        echo -e "${CYAN}  [ 0 ] ${WHITE}Go Back${NC}\n"
-        
-        echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
-        read choice_210 < /dev/tty
-        case $choice_210 in
-            1) 
-                LICENSE_TYPE="non-blueprint"; LICENSE_VERSION="2.1.0"
-                DOWNLOAD_URL=$(_dec "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3NkZ2FtZXI4MjYzLXNrZXRjaC9wdGVyb2RhY3R5bF9leHRlbnRpb24xL21haW4vc2QvdjIxMC9wdGVyb2RhY3R5bC56aXA=")
-                menu_action_210
-                [[ -n "$ACTION" ]] && return 0
-                ;;
-            2) 
-                LICENSE_TYPE="blueprint"; LICENSE_VERSION="2.1.0"
-                DOWNLOAD_URL=$(_dec "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3NkZ2FtZXI4MjYzLXNrZXRjaC9wdGVyb2RhY3R5bF9leHRlbnRpb24xL21haW4vcHRlcm9kYWN0eWwuemlw")
-                menu_action_210
-                [[ -n "$ACTION" ]] && return 0
-                ;;
-            0) return 0 ;;
-            *) warning "Invalid selection."; sleep 1 ;;
-        esac
-    done
-}
-
-menu_edition_208() {
-    while true; do
-        show_banner
-        echo -e "${WHITE}Select Edition for ${GREEN}Arix v2.0.8${WHITE}:${NC}\n"
-        echo -e "${CYAN}  [ 1 ] ${WHITE}Standard Edition (Non-Blueprint)"
-        echo -e "${CYAN}  [ 2 ] ${WHITE}Blueprint Edition"
-        echo -e "${CYAN}  [ 0 ] ${WHITE}Go Back${NC}\n"
-        
-        echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
-        read choice_208 < /dev/tty
-        case $choice_208 in
-            1) 
-                LICENSE_TYPE="non-blueprint"; LICENSE_VERSION="2.0.8"
-                DOWNLOAD_URL=$(_dec "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3NkZ2FtZXI4MjYzLXNrZXRjaC9wdGVyb2RhY3R5bF9leHRlbnRpb24xL21haW4vc2QvdjIwOC9wdGVyb2RhY3R5bC56aXA=")
-                menu_action_208
-                [[ -n "$ACTION" ]] && return 0
-                ;;
-            2) 
-                LICENSE_TYPE="blueprint"; LICENSE_VERSION="2.0.8"
-                DOWNLOAD_URL=$(_dec "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3NkZ2FtZXI4MjYzLXNrZXRjaC9wdGVyb2RhY3R5bF9leHRlbnRpb24xL21haW4vc2QvYXYxcHRlcm9kYWN0eWwuemlw")
-                menu_action_208
-                [[ -n "$ACTION" ]] && return 0
-                ;;
-            0) return 0 ;;
-            *) warning "Invalid selection."; sleep 1 ;;
-        esac
-    done
-}
-
 execute_theme_action() {
     if [ "$ACTION" == "uninstall" ]; then
         show_banner
-        [[ ! -d "/var/www/pterodactyl" ]] && error "Pterodactyl not found!" && exit 1
+        if [[ ! -d "/var/www/pterodactyl" ]]; then 
+            error "Pterodactyl not found!"
+            read -r -p "Press Enter to return..." dummy </dev/tty || true
+            return 0
+        fi
         cd /var/www/pterodactyl
         step "1/1" "Uninstalling Arix Theme..."
-        php artisan arix uninstall
+        php artisan arix uninstall || true
         echo -e "\n${GREEN} 🎉 UNINSTALLATION COMPLETED SUCCESSFULLY! 🎉 ${NC}\n"
-        exit 0
+        read -r -p "Press Enter to return to the menu..." dummy </dev/tty || true
+        return 0
     fi
 
     if [ "$ACTION" == "fix" ]; then
         show_banner; check_dependencies
-        [[ ! -d "/var/www/pterodactyl" ]] && error "Pterodactyl not found!" && exit 1
+        if [[ ! -d "/var/www/pterodactyl" ]]; then 
+            error "Pterodactyl not found!"
+            read -r -p "Press Enter to return..." dummy </dev/tty || true
+            return 0
+        fi
         cd /var/www/pterodactyl
         step "1/1" "Applying Auto Fixes & Compiling Panel..."
         apply_fixes_function
         apply_permissions_function
         echo -e "\n${GREEN} 🎉 FIXES APPLIED SUCCESSFULLY! 🎉 ${NC}\n"
-        exit 0
+        read -r -p "Press Enter to return to the menu..." dummy </dev/tty || true
+        return 0
     fi
 
     if [ "$ACTION" == "install" ]; then
         if ! verify_license "$LICENSE_TYPE" "$LICENSE_VERSION"; then
-            ACTION="" 
-            return 0
+            return 0 
         fi
         
         show_banner; check_dependencies 
 
-        [[ ! -d "/var/www/pterodactyl" ]] && error "Pterodactyl not found!" && exit 1
+        if [[ ! -d "/var/www/pterodactyl" ]]; then 
+            error "Pterodactyl not found!"
+            read -r -p "Press Enter to return..." dummy </dev/tty || true
+            return 0
+        fi
         cd /var/www/pterodactyl 
 
         step "1/4" "Downloading Arix Theme Assets..."
@@ -851,7 +766,7 @@ class Arix extends Command
     private function command($cmd) { return exec($cmd); }
 }
 EOF
-            php artisan arix install
+            php artisan arix install || true
         fi
         success "Modules injected!" 
 
@@ -866,8 +781,106 @@ EOF
 
         apply_permissions_function
         echo -e "\n${GREEN} 🎉 INSTALLATION COMPLETED SUCCESSFULLY! 🎉 ${NC}\n"
-        exit 0
+        read -r -p "Press Enter to return to the menu..." dummy </dev/tty || true
+        return 0
     fi
+}
+
+# ==========================================
+# 🛠️ ARIX THEME MENUS
+# ==========================================
+menu_action_210() {
+    while true; do
+        show_banner
+        echo -e "${WHITE}Select Action for ${GREEN}Arix v2.1.0 ($LICENSE_TYPE)${WHITE}:${NC}\n"
+        echo -e "${CYAN}  [ 1 ] ${WHITE}Install + Auto Fix"
+        echo -e "${CYAN}  [ 2 ] ${WHITE}Uninstall"
+        echo -e "${CYAN}  [ 3 ] ${WHITE}Fixes Issues ${YELLOW}(For already installed panels)${NC}"
+        echo -e "${CYAN}  [ 0 ] ${WHITE}Go Back${NC}\n"
+        
+        echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
+        read -r action_choice </dev/tty || read -r action_choice
+        case $action_choice in
+            1) ACTION="install"; execute_theme_action ;;
+            2) ACTION="uninstall"; execute_theme_action ;;
+            3) ACTION="fix"; execute_theme_action ;;
+            0) return 0 ;;
+            *) warning "Invalid selection."; sleep 1 ;;
+        esac
+    done
+}
+
+menu_action_208() {
+    while true; do
+        show_banner
+        echo -e "${WHITE}Select Action for ${GREEN}Arix v2.0.8 ($LICENSE_TYPE)${WHITE}:${NC}\n"
+        echo -e "${CYAN}  [ 1 ] ${WHITE}Install"
+        echo -e "${CYAN}  [ 2 ] ${WHITE}Uninstall"
+        echo -e "${CYAN}  [ 0 ] ${WHITE}Go Back${NC}\n"
+        
+        echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
+        read -r action_choice </dev/tty || read -r action_choice
+        case $action_choice in
+            1) ACTION="install"; execute_theme_action ;;
+            2) ACTION="uninstall"; execute_theme_action ;;
+            0) return 0 ;;
+            *) warning "Invalid selection."; sleep 1 ;;
+        esac
+    done
+}
+
+menu_edition_210() {
+    while true; do
+        show_banner
+        echo -e "${WHITE}Select Edition for ${GREEN}Arix v2.1.0${WHITE}:${NC}\n"
+        echo -e "${CYAN}  [ 1 ] ${WHITE}Standard Edition (Non-Blueprint)"
+        echo -e "${CYAN}  [ 2 ] ${WHITE}Blueprint Edition"
+        echo -e "${CYAN}  [ 0 ] ${WHITE}Go Back${NC}\n"
+        
+        echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
+        read -r choice_210 </dev/tty || read -r choice_210
+        case $choice_210 in
+            1) 
+                LICENSE_TYPE="non-blueprint"; LICENSE_VERSION="2.1.0"
+                DOWNLOAD_URL=$(_dec "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3NkZ2FtZXI4MjYzLXNrZXRjaC9wdGVyb2RhY3R5bF9leHRlbnRpb24xL21haW4vc2QvdjIxMC9wdGVyb2RhY3R5bC56aXA=")
+                menu_action_210
+                ;;
+            2) 
+                LICENSE_TYPE="blueprint"; LICENSE_VERSION="2.1.0"
+                DOWNLOAD_URL=$(_dec "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3NkZ2FtZXI4MjYzLXNrZXRjaC9wdGVyb2RhY3R5bF9leHRlbnRpb24xL21haW4vcHRlcm9kYWN0eWwuemlw")
+                menu_action_210
+                ;;
+            0) return 0 ;;
+            *) warning "Invalid selection."; sleep 1 ;;
+        esac
+    done
+}
+
+menu_edition_208() {
+    while true; do
+        show_banner
+        echo -e "${WHITE}Select Edition for ${GREEN}Arix v2.0.8${WHITE}:${NC}\n"
+        echo -e "${CYAN}  [ 1 ] ${WHITE}Standard Edition (Non-Blueprint)"
+        echo -e "${CYAN}  [ 2 ] ${WHITE}Blueprint Edition"
+        echo -e "${CYAN}  [ 0 ] ${WHITE}Go Back${NC}\n"
+        
+        echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
+        read -r choice_208 </dev/tty || read -r choice_208
+        case $choice_208 in
+            1) 
+                LICENSE_TYPE="non-blueprint"; LICENSE_VERSION="2.0.8"
+                DOWNLOAD_URL=$(_dec "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3NkZ2FtZXI4MjYzLXNrZXRjaC9wdGVyb2RhY3R5bF9leHRlbnRpb24xL21haW4vc2QvdjIwOC9wdGVyb2RhY3R5bC56aXA=")
+                menu_action_208
+                ;;
+            2) 
+                LICENSE_TYPE="blueprint"; LICENSE_VERSION="2.0.8"
+                DOWNLOAD_URL=$(_dec "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3NkZ2FtZXI4MjYzLXNrZXRjaC9wdGVyb2RhY3R5bF9leHRlbnRpb24xL21haW4vc2QvYXYxcHRlcm9kYWN0eWwuemlw")
+                menu_action_208
+                ;;
+            0) return 0 ;;
+            *) warning "Invalid selection."; sleep 1 ;;
+        esac
+    done
 }
 
 run_theme_installer() {
@@ -880,11 +893,11 @@ run_theme_installer() {
         echo -e "${CYAN}  [ 0 ] ${WHITE}Go Back${NC}\n"
         
         echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
-        read main_choice < /dev/tty
+        read -r main_choice </dev/tty || read -r main_choice
         
         case $main_choice in
-            1) menu_edition_210; [[ -n "$ACTION" ]] && execute_theme_action ;;
-            2) menu_edition_208; [[ -n "$ACTION" ]] && execute_theme_action ;;
+            1) menu_edition_210 ;;
+            2) menu_edition_208 ;;
             0) return 0 ;;
             *) warning "Invalid selection. Try again."; sleep 1 ;;
         esac
@@ -898,7 +911,7 @@ check_blueprint_framework() {
     if ! command -v blueprint >/dev/null 2>&1 && [ ! -f "/usr/local/bin/blueprint" ]; then
         echo -e "\n${RED}[✖] First install Blueprint Framework!${NC}"
         echo -e "${YELLOW}The Blueprint Framework must be installed on your panel before installing Addons.${NC}\n"
-        read -p "Press Enter to return to the main menu..." dummy < /dev/tty
+        read -r -p "Press Enter to return to the main menu..." dummy </dev/tty || true
         return 1
     fi
     return 0
@@ -911,20 +924,20 @@ get_title() { echo 'ICAgICAg44CCIOKAjCDigJMgTm9iaXRhLmRldiBDT05UUk9MIEhVQiDigJMg
 run_blueprint() {
     local NAME="$1"
     local ACTION="$2"
-    cd /var/www/pterodactyl || exit 1
+    cd /var/www/pterodactyl || return 0
     
     if [[ "$ACTION" == "install" ]]; then
         echo -e "${G}📥 Installing ${NAME%.blueprint}...${N}"
         wget -q "$ADDON_URL/$NAME" -O "$NAME"
         if [[ -s "$NAME" ]]; then
-            yes | blueprint -i "$NAME"
+            yes | blueprint -i "$NAME" || true
             rm -f "$NAME"
         else
             echo -e "${R}Failed to download ${NAME}${N}"
         fi
     else
         echo -e "${R}🗑️ Removing ${NAME%.blueprint}...${N}"
-        yes | blueprint -r "${NAME%.blueprint}"
+        yes | blueprint -r "${NAME%.blueprint}" || true
     fi
 }
 
@@ -963,7 +976,7 @@ run_addon_installer() {
     selected_indices=()
     while true; do
         show_addon_menu
-        read -p " 👉 Select ID(s) or Action: " raw_choice < /dev/tty
+        read -r -p " 👉 Select ID(s) or Action: " raw_choice </dev/tty || raw_choice="0"
         
         choice=$(echo "$raw_choice" | tr ',' ' ')
         
@@ -995,7 +1008,7 @@ run_addon_installer() {
                 
                 selected_indices=()
                 echo ""
-                read -p "Done. Press Enter to return..." dummy < /dev/tty
+                read -r -p "Done. Press Enter to return..." dummy </dev/tty || true
                 ;;
             *)
                 for val in $choice; do
@@ -1029,7 +1042,7 @@ while true; do
     echo -e "${CYAN}  [ 0 ] ${WHITE}Exit${NC}\n"
     
     echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
-    read super_choice < /dev/tty
+    read -r super_choice </dev/tty || read -r super_choice
     echo -ne "${NC}"
     
     case $super_choice in
