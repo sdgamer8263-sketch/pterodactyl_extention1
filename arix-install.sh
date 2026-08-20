@@ -1127,6 +1127,15 @@ EOF
         success "RegisterController.php Replaced!"
         info "Compiling panel final step... (Please wait)"
         ( yarn build > /dev/null 2>&1 ) & spinner $!
+        cd /var/www/pterodactyl
+grep -rl "2.1.[0-9]" resources/ config/ app/ 2>/dev/null | xargs sed -i 's/2.1.[0-9]/2.1.2/g'
+php artisan view:clear
+php artisan optimize:clear
+cd /var/www/pterodactyl
+sed -i "s/'version' => '[0-9.]*'/'version' => '1.15.1'/g" config/app.php
+php artisan config:clear
+php artisan optimize:clear
+
         
         echo ""
         echo -e "${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
