@@ -70,7 +70,6 @@ LICENSE_VERSION=""
 ACTION=""
 LICENSE_VALID="false"
 
-
 # ==========================================
 # THEME INSTALLER FUNCTIONS
 # ==========================================
@@ -153,7 +152,12 @@ prompt_action() {
         
         if [ "$version" == "2.1.0" ]; then
             echo -e "${CYAN}  [ 3 ] ${WHITE}Fix Issues"
-            echo -e "${CYAN}  [ 4 ] ${WHITE}Go Back${NC}\n"
+            if [ "$LICENSE_TYPE" == "blueprint" ]; then
+                echo -e "${CYAN}  [ 4 ] ${WHITE}Add New Features"
+                echo -e "${CYAN}  [ 5 ] ${WHITE}Go Back${NC}\n"
+            else
+                echo -e "${CYAN}  [ 4 ] ${WHITE}Go Back${NC}\n"
+            fi
         else
             echo -e "${CYAN}  [ 3 ] ${WHITE}Go Back${NC}\n"
         fi
@@ -162,7 +166,16 @@ prompt_action() {
         read act_choice
         echo -ne "${NC}"
         
-        if [ "$version" == "2.1.0" ]; then
+        if [ "$version" == "2.1.0" ] && [ "$LICENSE_TYPE" == "blueprint" ]; then
+            case $act_choice in
+                1) ACTION="install"; return 0 ;;
+                2) ACTION="uninstall"; return 0 ;;
+                3) ACTION="fix_issues"; return 0 ;;
+                4) ACTION="add_features"; return 0 ;;
+                5) ACTION=""; return 1 ;;
+                *) warning "Invalid selection."; sleep 1 ;;
+            esac
+        elif [ "$version" == "2.1.0" ]; then
             case $act_choice in
                 1) ACTION="install"; return 0 ;;
                 2) ACTION="uninstall"; return 0 ;;
@@ -308,12 +321,191 @@ execute_theme_action() {
             sleep 2
             return 0
         fi
+        l
+        
+        echo ""
+        echo -e "${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
+        typewriter "      🛠️ FIX ISSUES APPLIED SUCCESSFULLY! 🛠️      "
+        echo -e "${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
+        echo ""
+        read -p "Press Enter to return to main menu..."
+        return 0
+    fi
+
+    # ----------------------------------------------------
+    # ADD NEW FEATURES PROCESS (ONLY 2.1.0 BLUEPRINT)
+    # ----------------------------------------------------
+    if [ "$ACTION" == "add_features" ]; then
+        show_banner
+        echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
+        echo -e "${WHITE}           INITIALIZING ADD NEW FEATURES          ${NC}"
+        echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}" 
+
+        if [ ! -d "/var/www/pterodactyl" ]; then
+            error "Pterodactyl installation not found in /var/www/pterodactyl!"
+            sleep 2
+            return 0
+        fi
         cd /var/www/pterodactyl 
         
-        # 1. RouterElements.tsx
-        info "Fixing RouterElements.tsx..."
-        rm -f resources/scripts/routers/RouterElements.tsx
-        cat << 'EOF' > resources/scripts/routers/RouterElements.tsx
+        info "Applying New Features..."
+
+cat << 'EOF' > app/Http/Controllers/Admin/Arix/ArixController.php
+<?php
+namespace Pterodactyl\Http\Controllers\Admin\Arix; 
+
+use Prologue\Alerts\AlertsMessageBag;
+use Illuminate\View\Factory as ViewFactory;
+use Pterodactyl\Http\Controllers\Controller;
+use Pterodactyl\Http\Requests\Admin\Arix\ArixRequest;
+use Pterodactyl\Contracts\Repository\SettingsRepositoryInterface; 
+
+class ArixController extends Controller
+{
+    public function __construct(private AlertsMessageBag $alert, private SettingsRepositoryInterface $settings, private ViewFactory $view) {} 
+
+    private function responseData() {
+        return [
+            'logo' => (string) $this->settings->get('settings::arix:general:logo', '/arix/Arix.png'),
+            'logoLight' => (string) $this->settings->get('settings::arix:general:logoLight', '/arix/Arix.png'),
+            'fullLogo' => filter_var($this->settings->get('settings::arix:general:fullLogo', false), FILTER_VALIDATE_BOOLEAN),
+            'logoHeight' => (int) $this->settings->get('settings::arix:general:logoHeight', 32),
+            'discord' => (string) $this->settings->get('settings::arix:general:discord', ''),
+            'support' => (string) $this->settings->get('settings::arix:general:support', ''),
+            'extension_icons' => (string) $this->settings->get('settings::arix:general:extension_icons', '{}'),
+        ];
+    } 
+
+    public function index(): \Illuminate\Http\JsonResponse { return response()->json($this->responseData()); } 
+
+    public function store(ArixRequest $request) {
+        $payload = $request->validated();
+        $settings = [
+            'logo' => (string) $payload['logo'],
+            'logoLight' => (string) $payload['logoLight'],
+            'fullLogo' => filter_var($payload['fullLogo'], FILTER_VALIDATE_BOOLEAN),
+            'logoHeight' => (int) $payload['logoHeight'],
+            'discord' => isset($payload['discord']) ? (string) $payload['discord'] : null,
+            'support' => isset($payload['support']) ? (string) $payload['support'] : null,
+            'extension_icons' => isset($payload['extension_icons']) ? (string) $payload['extension_icons'] : '{}',
+        ]; 
+
+        foreach ($settings as $key => $value) { $this->settings->set('settings::arix:general:' . $key, $value); }
+        
+        // Failsafe: Save directly to public file for the sidebar to read instantly!
+        @file_put_contents(public_path('extension_icons.json'), $settings['extension_icons']);
+        
+        $this->alert->success('Settings updated successfully.')->flash();
+        return response()->json($this->responseData());
+    }
+}
+EOF
+
+cat << 'EOF' > resources/scripts/components/admin/addons/AddonsContainer.tsx
+import React, { useEffect, useState } from 'react';
+import { Formik, useFormikContext } from 'formik';
+import EditorWrapper from '../elements/EditorWrapper';
+import BorderedBox from '../elements/BorderedBox';
+import { Button } from '@/components/elements/button/index';
+import getGeneral, { updateGeneral } from '@/api/admin/General';
+import Spinner from '@/components/elements/Spinner';
+import FlashMessageRender from '@/components/FlashMessageRender';
+import useFlash from '@/plugins/useFlash';
+import { httpErrorToHuman } from '@/api/http';
+import Field from '@/components/elements/Field'; 
+
+let BlueprintRouter: any = { server: [] };
+try { BlueprintRouter = require('@blueprint/extends/routers/routes').default || require('@blueprint/extends/routers/routes'); } catch (e) {} 
+
+const SvgInput = ({ ext }: { ext: any }) => {
+    const { values, handleChange } = useFormikContext<any>();
+    const fieldName = `icon_${ext.identifier}`;
+    return (
+        <div className='flex flex-col gap-1 mt-2'>
+            <label className='text-xs font-semibold text-gray-300 uppercase'>SVG Code</label>
+            <textarea
+                id={fieldName}
+                name={fieldName}
+                value={values[fieldName] || ''}
+                onChange={handleChange}
+                className="w-full bg-neutral-900 border border-neutral-700 rounded-md p-3 text-sm text-neutral-200 outline-none focus:border-blue-500 transition-colors resize-y"
+                rows={4}
+                placeholder='Paste raw <svg>...</svg> code here'
+            />
+        </div>
+    );
+}; 
+
+export default () => {
+    const [isLoading, setIsLoading] = useState(true);
+    const [data, setData] = useState<any>(null);
+    const { clearFlashes, addFlash } = useFlash(); 
+
+    const installedExtensions = BlueprintRouter?.server || []; 
+
+    useEffect(() => {
+        clearFlashes();
+        getGeneral().then((data) => { setData(data); setIsLoading(false); })
+        .catch((error) => { clearFlashes(); addFlash({ type: 'error', message: httpErrorToHuman(error) }); setIsLoading(false); });
+    }, []); 
+
+    const handleSubmit = (values: any) => {
+        clearFlashes();
+        const iconsObj: any = {};
+        installedExtensions.forEach((ext: any) => {
+            let val = values[`icon_${ext.identifier}`] || '';
+            val = val.replace(/\r?\n|\r/g, ''); // Removes newlines safely
+            iconsObj[ext.identifier] = val;
+        });
+        
+        const payload: any = { ...data, extension_icons: JSON.stringify(iconsObj) };
+        return updateGeneral(payload).then((updated) => {
+            setData(updated ?? payload);
+            addFlash({ type: 'success', message: 'SVG Icons saved successfully!' });
+        }).catch((error) => { addFlash({ type: 'error', message: httpErrorToHuman(error) }); });
+    }; 
+
+    let initialValues: any = {};
+    if (data) {
+        try {
+            const savedIcons = JSON.parse(data.extension_icons || '{}');
+            installedExtensions.forEach((ext: any) => { initialValues[`icon_${ext.identifier}`] = savedIcons[ext.identifier] || ''; });
+        } catch(e) {}
+    } 
+
+    return (
+        <EditorWrapper title='Extension & Blueprint Settings'>
+            <FlashMessageRender />
+            {isLoading || !data ? ( <Spinner size='large' centered /> ) : (
+                <Formik initialValues={initialValues} enableReinitialize onSubmit={handleSubmit}>
+                    {({ isSubmitting, submitForm }) => (
+                        <React.Fragment>
+                            <BorderedBox title='Auto-Detected Extensions' description={`System detected ${installedExtensions.length} installed blueprints. Paste the raw SVG code for each icon.`}>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {installedExtensions.length > 0 ? installedExtensions.map((ext: any, i: number) => (
+                                        <div key={i} className='bg-gray-800 p-4 rounded-lg flex flex-col gap-2'>
+                                            <h3 className='text-sm font-semibold text-gray-200'>{ext.name || ext.identifier}</h3>
+                                            <p className='text-xs text-gray-400'>Path: {ext.path}</p>
+                                            <SvgInput ext={ext} />
+                                        </div>
+                                    )) : <p className="text-gray-400">No extensions detected on this panel.</p>}
+                                </div>
+                            </BorderedBox>
+                            <div className='mt-auto sticky bottom-0 px-6 pb-5 bg-gray-700 z-20'>
+                                <Button className='w-full' onClick={submitForm} disabled={isSubmitting}>
+                                    Save Icons {isSubmitting && <Spinner size='small' className='ml-2' />}
+                                </Button>
+                            </div>
+                        </React.Fragment>
+                    )}
+                </Formik>
+            )}
+        </EditorWrapper>
+    );
+};
+EOF
+
+cat << 'EOF' > resources/scripts/routers/RouterElements.tsx
 import React, { useEffect, useState, useMemo } from 'react';
 import { ServerContext } from '@/state/server';
 import routes from '@/routers/routes';
@@ -329,30 +521,12 @@ import Icon from '@/components/admin/elements/IconMap';
 import Can from '@/components/elements/Can';
 import { LinkCategory, LinkItem } from '@/api/admin/Link';
 import { useTranslation } from 'react-i18next';
-import { StarIcon } from '@heroicons/react/solid'; 
+import { StarIcon } from '@heroicons/react/solid';
+import { FaPuzzlePiece } from 'react-icons/fa'; 
 
-// --- BLUEPRINT IMPORTS ---
-import blueprintRoutes from '@blueprint/extends/routers/routes';
-import { HiOutlineAdjustments, HiAdjustments } from 'react-icons/hi';
-import { LuSlidersVertical } from 'react-icons/lu';
-import { RiSoundModuleLine, RiSoundModuleFill } from 'react-icons/ri'; 
-
-// --- CUSTOM ICON IMPORTS ---
-import { 
-    FaEdit, FaGlobe, FaCogs, FaCodeBranch, FaBoxOpen, FaPlug, 
-    FaMap, FaUsers, FaFileImport, FaPuzzlePiece, FaLayerGroup, 
-    FaCube, FaRocket, FaBolt, FaTerminal, FaArchive, FaDatabase, FaCalendarAlt 
-} from 'react-icons/fa';
-// ------------------------- 
-
-const ICON_MAP: Record<string, number> = {
-    heroicons: 0,
-    heroiconsFilled: 1,
-    lucide: 2,
-    remixicon: 3,
-    remixiconFilled: 4,
-};
-// ------------------------- 
+// Universal Failsafe for Blueprint Routes
+let blueprintRoutes: any = { server: [] };
+try { blueprintRoutes = require('@blueprint/extends/routers/routes').default || require('@blueprint/extends/routers/routes'); } catch (e) {} 
 
 const shouldDisplayRoute = (route: any, nestId?: number, eggId?: number): boolean => {
     const hasNestMatch = route.nestIds?.includes(nestId ?? 0) || route.nestId === nestId;
@@ -364,8 +538,7 @@ const shouldDisplayRoute = (route: any, nestId?: number, eggId?: number): boolea
 const useServerIds = () => {
     const nestId = ServerContext.useStoreState((state) => state.server.data?.nestId);
     const eggId = ServerContext.useStoreState((state) => state.server.data?.eggId);
-    const tier = ServerContext.useStoreState((state) => state.server.data?.tier); 
-
+    const tier = ServerContext.useStoreState((state) => state.server.data?.tier);
     return { nestId, eggId, tier };
 }; 
 
@@ -377,127 +550,70 @@ const usePathBuilder = () => {
     };
 }; 
 
-const getAdjustedPath = (path: string, isDashboardDisabled: boolean) =>
-    path === '/console' && isDashboardDisabled ? '/' : path; 
+const getAdjustedPath = (path: string, isDashboardDisabled: boolean) => path === '/console' && isDashboardDisabled ? '/' : path; 
 
 const Link = (props: LinkItem) => {
     const { t } = useTranslation('arix/navigation');
     const { nestId, eggId, tier } = useServerIds();
-    const tierVisibility = useStoreState(
-        (state: ApplicationStore) => state.settings.data?.arix?.advanced?.tierVisibility ?? 'show'
-    ); 
-
-    const permissions = (props.permission ?? []).filter((permission) => permission && permission.trim().length > 0);
-    const hasPermissions = permissions.length > 0; 
-
+    const tierVisibility = useStoreState((state: ApplicationStore) => state.settings.data?.arix?.advanced?.tierVisibility ?? 'show');
+    const permissions = (props.permission ?? []).filter((p) => p && p.trim().length > 0);
     const hasNestRestrictions = Array.isArray(props.nests) && props.nests.length > 0;
     const hasEggRestrictions = Array.isArray(props.eggs) && props.eggs.length > 0;
-    const hasTierRestrictions = Array.isArray(props.tier) && props.tier.length > 0; 
-
+    const hasTierRestrictions = Array.isArray(props.tier) && props.tier.length > 0;
     const nestMatches = hasNestRestrictions && typeof nestId === 'number' && props.nests?.includes(nestId) === true;
     const eggMatches = hasEggRestrictions && typeof eggId === 'number' && props.eggs?.includes(eggId) === true;
-    const tierMatches =
-        hasTierRestrictions && tier !== null && tier !== undefined && props.tier?.includes(tier) === true; 
-
-    const hasRestrictions = hasNestRestrictions || hasEggRestrictions || hasTierRestrictions; 
-
-    const showStar =
-        hasTierRestrictions && tier !== null && tier !== undefined && !tierMatches && tierVisibility === 'show';
-    const shouldHide =
-        hasTierRestrictions && tier !== null && tier !== undefined && !tierMatches && tierVisibility === 'hidden'; 
-
+    const tierMatches = hasTierRestrictions && tier !== null && tier !== undefined && props.tier?.includes(tier) === true;
+    const hasRestrictions = hasNestRestrictions || hasEggRestrictions || hasTierRestrictions;
+    const showStar = hasTierRestrictions && tier !== null && tier !== undefined && !tierMatches && tierVisibility === 'show';
+    const shouldHide = hasTierRestrictions && tier !== null && tier !== undefined && !tierMatches && tierVisibility === 'hidden';
     const buildPath = usePathBuilder(); 
 
-    if (hasRestrictions && !nestMatches && !eggMatches && shouldHide) {
-        return null;
-    } 
-
-    const starIcon = showStar ? <StarIcon className='w-3 text-yellow-500' /> : null; 
+    if (hasRestrictions && !nestMatches && !eggMatches && shouldHide) return null; 
 
     const linkContent = (
         <>
-            <div className='routers_link_icon'>
-                <Icon name={props.icon} size='1.25rem' />
-            </div>
+            <div className='routers_link_icon'><Icon name={props.icon} size='1.25rem' /></div>
             <span className='routers_link_title'>{t(props.name)}</span>
-            {starIcon}
+            {showStar && <StarIcon className='w-3 text-yellow-500' />}
         </>
     ); 
 
     const inner = props.url.includes('http') ? (
-        <div className='relative'>
-            <a key={props.name} href={props.url} target='_blank' rel='noreferrer' className='routers_link'>
-                {linkContent}
-            </a>
-        </div>
+        <div className='relative'><a href={props.url} target='_blank' rel='noreferrer' className='routers_link'>{linkContent}</a></div>
     ) : (
-        <div className='relative'>
-            <NavLink
-                key={props.name}
-                to={buildPath(props.url, true)}
-                exact={props.url === '/'}
-                className='routers_link'
-            >
-                {linkContent}
-            </NavLink>
-        </div>
+        <div className='relative'><NavLink to={buildPath(props.url, true)} exact={props.url === '/'} className='routers_link'>{linkContent}</NavLink></div>
     ); 
 
-    return hasPermissions ? (
-        <Can action={permissions} matchAny>
-            {inner}
-        </Can>
-    ) : (
-        inner
-    );
+    return permissions.length > 0 ? <Can action={permissions} matchAny>{inner}</Can> : inner;
 }; 
 
 const Category = (props: LinkCategory) => {
     const { t } = useTranslation('arix/navigation');
     const { nestId, eggId } = useServerIds();
-    const permissions = (props.permission ?? []).filter((permission) => permission && permission.trim().length > 0);
-    const hasPermissions = permissions.length > 0;
+    const permissions = (props.permission ?? []).filter((p) => p && p.trim().length > 0);
     const hasNestRestrictions = Array.isArray(props.nests) && props.nests.length > 0;
     const hasEggRestrictions = Array.isArray(props.eggs) && props.eggs.length > 0;
     const nestMatches = hasNestRestrictions && typeof nestId === 'number' && props.nests?.includes(nestId) === true;
-    const eggMatches = hasEggRestrictions && typeof eggId === 'number' && props.eggs?.includes(eggId) === true;
-    const hasRestrictions = hasNestRestrictions || hasEggRestrictions; 
+    const eggMatches = hasEggRestrictions && typeof eggId === 'number' && props.eggs?.includes(eggId) === true; 
 
-    if (hasRestrictions && !nestMatches && !eggMatches) {
-        return null;
-    } 
+    if ((hasNestRestrictions || hasEggRestrictions) && !nestMatches && !eggMatches) return null; 
 
-    return hasPermissions ? (
-        <Can action={permissions} matchAny>
-            <div key={props.name} className='routers_category-wrapper'>
-                <span className='routers_category'>{t(props.name)}</span>
-                <div className='routers_links'>
-                    {props.links.map((link) => (
-                        <Link key={link.name} {...link} />
-                    ))}
-                </div>
-            </div>
-        </Can>
-    ) : (
+    const inner = (
         <div className='routers_category-wrapper'>
             <span className='routers_category'>{t(props.name)}</span>
-            <div className='routers_links'>
-                {props.links.map((link) => (
-                    <Link key={link.name} {...link} />
-                ))}
-            </div>
+            <div className='routers_links'>{props.links.map((link) => <Link key={link.name} {...link} />)}</div>
         </div>
-    );
+    ); 
+
+    return permissions.length > 0 ? <Can action={permissions} matchAny>{inner}</Can> : inner;
 }; 
 
-// --- BLUEPRINT LOGIC INJECTION ---
-const blueprintExtensions = [...new Set(blueprintRoutes.server.map((route) => route.identifier))]; 
+const blueprintExtensions = [...new Set((blueprintRoutes.server || []).map((route: any) => route.identifier))]; 
 
 const useExtensionEggs = () => {
     const [extensionEggs, setExtensionEggs] = useState<{ [x: string]: string[] }>(
         blueprintExtensions.reduce((prev, current) => ({ ...prev, [current]: ['-1'] }), {})
-    ); 
-
+    );
     useEffect(() => {
         (async () => {
             const newEggs: { [x: string]: string[] } = {};
@@ -505,27 +621,23 @@ const useExtensionEggs = () => {
                 try {
                     const resp = await fetch(`/api/client/extensions/blueprint/eggs?${new URLSearchParams({ id })}`);
                     newEggs[id] = (await resp.json()) as string[];
-                } catch (e) {
-                    newEggs[id] = ['-1'];
-                }
+                } catch (e) { newEggs[id] = ['-1']; }
             }
             setExtensionEggs(newEggs);
         })();
-    }, []); 
-
+    }, []);
     return extensionEggs;
 }; 
 
 const useBlueprintServerRoutes = () => {
     const rootAdmin = useStoreState((state: ApplicationStore) => state.user.data?.rootAdmin ?? false);
     const serverEgg = ServerContext.useStoreState((state) => state.server.data?.BlueprintFramework?.eggId);
-    const extensionEggs = useExtensionEggs(); 
-
+    const extensionEggs = useExtensionEggs();
     return useMemo(() => {
-        return blueprintRoutes.server
-            .filter((route) => !!route.name)
-            .filter((route) => (route.adminOnly ? rootAdmin : true))
-            .filter((route) => {
+        return (blueprintRoutes.server || [])
+            .filter((route: any) => !!route.name)
+            .filter((route: any) => (route.adminOnly ? rootAdmin : true))
+            .filter((route: any) => {
                 const eggs = extensionEggs[route.identifier];
                 if (!eggs) return false;
                 return eggs.includes('-1') || eggs.includes(String(serverEgg));
@@ -533,115 +645,46 @@ const useBlueprintServerRoutes = () => {
     }, [rootAdmin, serverEgg, extensionEggs]);
 }; 
 
-// --- GET FOOLPROOF ROUTE KEY ---
-const getRouteKey = (route: any) => {
-    return `${route.name || ''} ${route.path || ''} ${route.identifier || ''}`.toLowerCase();
-};
-// ------------------------------------------------------ 
-
-const renderBlueprintIcon = (route: any, iconType: string) => {
-    const key = getRouteKey(route); 
-
-    if (key.includes('plugin')) return <FaPlug size="1.25rem" />;
-    if (key.includes('mod')) return <FaBoxOpen size="1.25rem" />;
-    if (key.includes('version')) return <FaCodeBranch size="1.25rem" />;
-    if (key.includes('propert') || key.includes('setting')) return <FaCogs size="1.25rem" />;
-    if (key.includes('player') || key.includes('user')) return <FaUsers size="1.25rem" />;
-    if (key.includes('world') || key.includes('map')) return <FaMap size="1.25rem" />;
-    if (key.includes('icon') || key.includes('import')) return <FaFileImport size="1.25rem" />;
-    
-    if (key.includes('motd')) return <FaEdit size="1.25rem" />;
-    if (key.includes('subdomain') || key.includes('domain')) return <FaGlobe size="1.25rem" />;
-    if (key.includes('backup') || key.includes('archive')) return <FaArchive size="1.25rem" />;
-    if (key.includes('database') || key.includes('mysql')) return <FaDatabase size="1.25rem" />;
-    if (key.includes('schedule') || key.includes('task')) return <FaCalendarAlt size="1.25rem" />; 
-
-    const genericIcons = [
-        <FaPuzzlePiece size="1.25rem" />, 
-        <FaLayerGroup size="1.25rem" />, 
-        <FaCube size="1.25rem" />, 
-        <FaRocket size="1.25rem" />, 
-        <FaBolt size="1.25rem" />, 
-        <FaTerminal size="1.25rem" />
-    ];
-    
-    let hash = 0;
-    for (let i = 0; i < key.length; i++) {
-        hash = key.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return genericIcons[Math.abs(hash) % genericIcons.length];
-}; 
-
-const BlueprintLink = ({ route }: { route: any }) => {
+const BlueprintLink = ({ route, customIconCode }: { route: any, customIconCode?: string }) => {
     const buildPath = usePathBuilder();
-    const iconType = useStoreState((state: ApplicationStore) => state.settings.data?.arix?.icon ?? 'heroicons');
-    const { t } = useTranslation('arix/navigation');
     
-    const inner = (
-        <NavLink
-            to={buildPath(route.path, true)}
-            exact={route.exact}
-            className='routers_link'
-        >
-            <div className='routers_link_icon'>
-                {renderBlueprintIcon(route, iconType)}
-            </div>
-            <span className='routers_link_title'>{t(route.name) || route.name}</span>
-        </NavLink>
-    ); 
+    // Direct Custom SVG Rendering (or Fallback icon if no SVG)
+    const iconContent = customIconCode && customIconCode.trim() !== '' 
+        ? <div className="w-5 h-5 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full text-gray-300 group-hover:text-gray-100 transition-colors" dangerouslySetInnerHTML={{ __html: customIconCode }} />
+        : <FaPuzzlePiece size="1.25rem" className="text-gray-300 group-hover:text-gray-100 transition-colors" />; 
 
-    return route.permission ? (
-        <Can action={route.permission} matchAny>
-            {inner}
-        </Can>
-    ) : inner;
-};
-// --------------------------------- 
+    const inner = (
+        <NavLink to={buildPath(route.path, true)} exact={route.exact} className='routers_link group'>
+            <div className='routers_link_icon'>{iconContent}</div>
+            <span className='routers_link_title'>{route.name}</span>
+        </NavLink>
+    );
+    return route.permission ? <Can action={route.permission} matchAny>{inner}</Can> : inner;
+}; 
 
 export const Navigation = () => {
     const links = useStoreState((state: ApplicationStore) => state.settings.data?.arix?.links ?? {});
+    
+    // Fetch JSON mapping from public safely
+    const [customIcons, setCustomIcons] = useState<Record<string, string>>({});
+    useEffect(() => {
+        fetch('/extension_icons.json?t=' + Date.now())
+            .then((res) => res.json())
+            .then((data) => setCustomIcons(data))
+            .catch(() => setCustomIcons({}));
+    }, []); 
+
     const blueprintServerRoutes = useBlueprintServerRoutes(); 
-
-    // --- IMPROVED SORTING LOGIC ---
-    const sortedBlueprintRoutes = useMemo(() => {
-        return [...blueprintServerRoutes].sort((a, b) => {
-            const keyA = getRouteKey(a);
-            const keyB = getRouteKey(b); 
-
-            const getRank = (key: string) => {
-                if (key.includes('plugin')) return 1;
-                if (key.includes('mod')) return 2;
-                if (key.includes('version')) return 3;
-                if (key.includes('propert')) return 4;
-                if (key.includes('player')) return 5;
-                if (key.includes('world')) return 6;
-                return 99; // বাকি সব (Icon Importer বা অন্য যা ইন্সটল করবে, সেগুলো এই ক্যাটাগরিতে পড়বে)
-            }; 
-
-            const rankA = getRank(keyA);
-            const rankB = getRank(keyB); 
-
-            if (rankA !== rankB) {
-                return rankA - rankB;
-            }
-            return keyA.localeCompare(keyB);
-        });
-    }, [blueprintServerRoutes]);
-    // ---------------------------- 
 
     return (
         <React.Fragment>
-            {Object.values(links).map((category, index) => (
-                <Category key={index} {...category} />
-            ))} 
-
-            {/* BLUEPRINT EXTENSIONS MENU */}
-            {sortedBlueprintRoutes.length > 0 && (
+            {Object.values(links).map((category, index) => <Category key={index} {...category} />)}
+            {blueprintServerRoutes.length > 0 && (
                 <div className='routers_category-wrapper'>
                     <span className='routers_category'>Extensions</span>
                     <div className='routers_links'>
-                        {sortedBlueprintRoutes.map((route) => (
-                            <BlueprintLink key={route.path} route={route} />
+                        {blueprintServerRoutes.map((route: any) => (
+                            <BlueprintLink key={route.path} route={route} customIconCode={customIcons[route.identifier]} />
                         ))}
                     </div>
                 </div>
@@ -659,14 +702,8 @@ export const ComponentLoader = () => {
     const blueprintServerRoutes = useBlueprintServerRoutes(); 
 
     const canShowWithTier = (routePath: string): boolean => {
-        const link = Object.values(links ?? {})
-            .flatMap((category) => category.links)
-            .find((link) => link.url === routePath); 
-
-        if (!link) return true;
-        if (!Array.isArray(link.tier) || link.tier.length === 0) return true;
-        if (tier == null) return true; 
-
+        const link = Object.values(links ?? {}).flatMap((category) => category.links).find((link) => link.url === routePath);
+        if (!link || !Array.isArray(link.tier) || link.tier.length === 0 || tier == null) return true;
         return link.tier.includes(tier);
     }; 
 
@@ -674,29 +711,20 @@ export const ComponentLoader = () => {
         <TransitionRouter>
             <Switch location={location}>
                 {routes.server.map((route) => {
-                    if (!shouldDisplayRoute(route, nestId, eggId)) return null;
-                    if (route.path === '/' && !dashboardPage) return null; 
-
+                    if (!shouldDisplayRoute(route, nestId, eggId) || (route.path === '/' && !dashboardPage)) return null;
                     const path = getAdjustedPath(route.path, !dashboardPage);
-                    const Component = route.component; 
-
-                    if (!canShowWithTier(path)) return <PremiumFeature />; 
-
-                    return (
+                    const Component = route.component;
+                    return !canShowWithTier(path) ? <PremiumFeature key={path} /> : (
                         <PermissionRoute key={path} permission={route.permission} path={buildPath(path)} exact>
-                            <Spinner.Suspense>
-                                <Component />
-                            </Spinner.Suspense>
+                            <Spinner.Suspense><Component /></Spinner.Suspense>
                         </PermissionRoute>
                     );
                 })} 
 
                 {/* BLUEPRINT COMPONENTS ROUTES */}
-                {blueprintServerRoutes.map(({ path, permission, component: Component }) => (
+                {blueprintServerRoutes.map(({ path, permission, component: Component }: any) => (
                     <PermissionRoute key={path} permission={permission} path={buildPath(path)} exact>
-                        <Spinner.Suspense>
-                            <Component />
-                        </Spinner.Suspense>
+                        <Spinner.Suspense><Component /></Spinner.Suspense>
                     </PermissionRoute>
                 ))} 
 
@@ -706,440 +734,160 @@ export const ComponentLoader = () => {
     );
 };
 EOF
-        success "RouterElements.tsx Replaced!"
-        info "Running yarn add and compiling panel... (Please wait)"
-        (
-            yarn add xterm-addon-unicode11 > /dev/null 2>&1
-            yarn build > /dev/null 2>&1
-        ) & spinner $!
 
-        # 2. DashboardRouter.tsx
-        info "Fixing DashboardRouter.tsx..."
-        rm -f resources/scripts/routers/DashboardRouter.tsx
-        cat << 'EOF' > resources/scripts/routers/DashboardRouter.tsx
-import React from 'react';
-import { NavLink, Route, Switch, useLocation } from 'react-router-dom';
-import DashboardContainer from '@/components/dashboard/dashboard/DashboardContainer';
-import { NotFound } from '@/components/elements/ScreenBlock';
-import TransitionRouter from '@/TransitionRouter';
-import Spinner from '@/components/elements/Spinner';
-import routes from '@/routers/routes'; 
+export NODE_OPTIONS=--openssl-legacy-provider
+yarn build:production
+php artisan optimize:clear
+php artisan view:clear
+chmod 777 public/extension_icons.json || true
+chown -R www-data:www-data public/extension_icons.json 2>/dev/null || chown -R nginx:nginx public/extension_icons.json 2>/dev/null || true
+cd /var/www/pterodactyl 
 
-import ContentContainer from '@/components/elements/ContentContainer';
-import { CodeIcon, CogIcon, EyeIcon, KeyIcon, LockClosedIcon, UserIcon } from '@heroicons/react/outline';
-import LayoutWrapper from './layouts/LayoutWrapper';
-import Announcement from '@/components/elements/Announcement';
-import { useStoreState } from 'easy-peasy';
-import { ApplicationStore } from '@/state';
-import { useTranslation } from 'react-i18next'; 
+# 1. JSON ফাইল না থাকলে তৈরি করে ফুল পারমিশন দেওয়া
+echo "{}" > public/extension_icons.json
+chmod 777 public/extension_icons.json || true
+chown -R www-data:www-data public/extension_icons.json 2>/dev/null || chown -R nginx:nginx public/extension_icons.json 2>/dev/null || true
 
-// --- BLUEPRINT IMPORTS ---
-import BeforeSubNavigation from '@blueprint/components/Navigation/SubNavigation/BeforeSubNavigation';
-import AdditionalAccountItems from '@blueprint/components/Navigation/SubNavigation/AdditionalAccountItems';
-import AfterSubNavigation from '@blueprint/components/Navigation/SubNavigation/AfterSubNavigation';
-import blueprintRoutes from '@blueprint/extends/routers/routes';
-// ------------------------- 
+# 2. Arix Editor-এর সাইডবারে Extensions (Puzzle) আইকন ফিরিয়ে আনা
+python3 -c "
+import re
+path = 'resources/scripts/routers/AdminRouter.tsx'
+with open(path, 'r') as f: content = f.read() 
 
-export default () => {
-    const { t } = useTranslation('arix/account'); 
+# আগের কোনো লুকানো বা কমেন্ট করা কোড থাকলে মুছে ফ্রেশ করা
+content = re.sub(r'\{\/\*.*?LuPuzzle.*?\*\/\}', '', content)
+content = re.sub(r'<Link to=\'/admin/arix/addons\'>.*?<\/Link>', '', content) 
 
-    const position = useStoreState((state: ApplicationStore) => state.settings.data?.arix?.announcement?.position ?? 'none');
-    const location = useLocation(); 
+# Advanced-এর ঠিক আগে Extensions বাটন বসানো
+target = \"<Link to='/admin/arix/advanced'>\"
+replacement = \"<Link to='/admin/arix/addons'> <LuPuzzle /> <span>Extensions</span> </Link>\\n                    \" + target
+if target in content:
+    content = content.replace(target, replacement)
+    with open(path, 'w') as f: f.write(content)
+    print('\n\033[0;32m[SUCCESS] Extensions button added to Admin Sidebar perfectly!\033[0m\n')
+" 
 
-    return (
-        <LayoutWrapper>
-            {position === 'top' && <Announcement />}
-            {location.pathname.startsWith('/account') && (
-                <div className='border-b border-gray-600 pt-6 px-4'>
-                    <ContentContainer>
-                        <div className={'flex items-center gap-x-3 mb-4'}>
-                            <div
-                                className={
-                                    'w-10 h-10 bg-arix/30 rounded-component !border-none flex items-center justify-center text-arix'
-                                }
-                            >
-                                <UserIcon className={'w-6'} />
-                            </div>
-                            <p className={'text-lg font-medium text-gray-300'}>{t('account-settings')}</p>
-                        </div>
-                        <div className='flex items-center gap-x-8'> 
+# 3. ফ্রন্টএন্ড আবার নতুন করে বিল্ড করা
+export NODE_OPTIONS=--openssl-legacy-provider
+yarn build:production 
 
-                            {/* BLUEPRINT SUB-NAVIGATION INJECTED */}
-                            <BeforeSubNavigation /> 
+# 4. সার্ভারের ক্যাশ ক্লিয়ার করা
+php artisan optimize:clear
+cd /var/www/pterodactyl 
 
-                            {/* ARIX DEFAULT MENUS */}
-                            <NavLink
-                                to={'/account'}
-                                className={
-                                    'border-b border-transparent py-2 flex items-center gap-1 hover:text-gray-100 duration-300'
-                                }
-                                activeClassName={'!border-arix text-gray-100'}
-                                exact
-                            >
-                                <CogIcon className={'w-5'} />
-                                {t('general')}
-                            </NavLink>
-                            <NavLink
-                                to={'/account/security'}
-                                className={
-                                    'border-b border-transparent py-2 flex items-center gap-1 hover:text-gray-100 duration-300'
-                                }
-                                activeClassName={'!border-arix text-gray-100'}
-                            >
-                                <LockClosedIcon className={'w-5'} />
-                                {t('security')}
-                            </NavLink>
-                            <NavLink
-                                to={'/account/ssh-keys'}
-                                className={
-                                    'border-b border-transparent py-2 flex items-center gap-1 hover:text-gray-100 duration-300'
-                                }
-                                activeClassName={'!border-arix text-gray-100'}
-                            >
-                                <KeyIcon className={'w-5'} />
-                                {t('ssh-keys')}
-                            </NavLink>
-                            <NavLink
-                                to={'/account/api-keys'}
-                                className={
-                                    'border-b border-transparent py-2 flex items-center gap-1 hover:text-gray-100 duration-300'
-                                }
-                                activeClassName={'!border-arix text-gray-100'}
-                            >
-                                <CodeIcon className={'w-5'} />
-                                {t('api-keys')}
-                            </NavLink>
-                            <NavLink
-                                to={'/account/activity'}
-                                className={
-                                    'border-b border-transparent py-2 flex items-center gap-1 hover:text-gray-100 duration-300'
-                                }
-                                activeClassName={'!border-arix text-gray-100'}
-                            >
-                                <EyeIcon className={'w-5'} />
-                                {t('activity')}
-                            </NavLink> 
+# 1. ফাইলটি তৈরি করা এবং সার্ভারকে ১০০% লেখার পারমিশন দেওয়া
+touch public/extension_icons.json
+chmod 777 public/extension_icons.json || true
+chown -R www-data:www-data public/extension_icons.json 2>/dev/null || chown -R nginx:nginx public/extension_icons.json 2>/dev/null || true
 
-                            {/* BLUEPRINT SUB-NAVIGATION INJECTED */}
-                            <AdditionalAccountItems />
-                            <AfterSubNavigation /> 
+# 2. ডেটাবেসে সেভ থাকা আপনার আইকনটিকে জোর করে ফাইলে পাঠিয়ে দেওয়া
+php artisan tinker --execute="file_put_contents(public_path('extension_icons.json'), app()->make('Pterodactyl\Contracts\Repository\SettingsRepositoryInterface')->get('settings::arix:general:extension_icons', '{}'));"
 
-                        </div>
-                    </ContentContainer>
-                </div>
-            )} 
+cat << 'EOF' > app/Http/Requests/Admin/Arix/ArixRequest.php
+<?php
+namespace Pterodactyl\Http\Requests\Admin\Arix;
+use Pterodactyl\Http\Requests\Admin\AdminFormRequest; 
 
-            <TransitionRouter>
-                <React.Suspense fallback={<Spinner centered />}>
-                    <Switch location={location}>
-                        <Route path={'/'} exact>
-                            <DashboardContainer />
-                        </Route>
-                        {routes.account.map(({ path, component: Component }) => (
-                            <Route key={path} path={`/account/${path}`.replace('//', '/')} exact>
-                                <Component />
-                            </Route>
-                        ))} 
-
-                        {/* BLUEPRINT ROUTES PROPERLY INJECTED IN ARIX UI */}
-                        {(blueprintRoutes.account || []).map(({ path, component: Component }) => (
-                            <Route key={path} path={`/account/${path}`.replace('//', '/')} exact>
-                                <Component />
-                            </Route>
-                        ))} 
-
-                        <Route path={'*'}>
-                            <NotFound />
-                        </Route>
-                    </Switch>
-                </React.Suspense>
-            </TransitionRouter>
-        </LayoutWrapper>
-    );
-};
-EOF
-        success "DashboardRouter.tsx Replaced!"
-        info "Compiling panel... (Please wait)"
-        ( yarn build > /dev/null 2>&1 ) & spinner $!
-
-        # 3. AppearanceWrapper.tsx
-        info "Fixing AppearanceWrapper.tsx..."
-        rm -f resources/scripts/components/dashboard/account/forms/AppearanceWrapper.tsx
-        cat << 'EOF' > resources/scripts/components/dashboard/account/forms/AppearanceWrapper.tsx
-import React, { useState, useEffect, ChangeEvent } from 'react';
-import { useStoreState } from 'easy-peasy';
-import { ApplicationStore } from '@/state';
-import { useTranslation } from 'react-i18next';
-import TitledGreyBox from '@/components/elements/TitledGreyBox';
-import Switch from '@/components/elements/Switch';
-import Select from '@/components/elements/Select';
-import updateAccountLanguage from '@/api/account/updateAccountLanguage';
-import { Button } from '@/components/elements/button/index';
-import { DesktopComputerIcon, EyeIcon, MoonIcon, SunIcon } from '@heroicons/react/outline'; 
-
-const AppearanceWrapper = () => {
-    const { i18n } = useTranslation('arix/account');
-    const [selectedLanguage, setSelectedLanguage] = useState(i18n.language); 
-
-    const {
-        modeToggler,
-        defaultMode,
-        langSwitch,
-        languageOptions: languages,
-    } = useStoreState((state: ApplicationStore) => state.settings.data!.arix.advanced); 
-
-    const [theme, setTheme] = useState(() => localStorage.getItem('theme') || defaultMode || 'dark');
-    const [isCompact, setIsCompact] = useState(() => localStorage.getItem('compactMode') === 'true');
-    const [isPrivacyMode, setIsPrivacyMode] = useState(() => localStorage.getItem('privacyMode') === 'true');
-    const [panelSounds, setPanelSounds] = useState(() => localStorage.getItem('panelSounds') === 'true');
-    const [animations, setAnimations] = useState(() => localStorage.getItem('animations') === 'true'); 
-
-    useEffect(() => {
-        localStorage.setItem('theme', theme);
-        document.body.classList.remove('lightmode', 'darkmode', 'oled', 'auto');
-        if (theme === 'light') {
-            document.body.classList.add('lightmode');
-        } else if (theme === 'oled') {
-            document.body.classList.add('oled');
-        } else if (theme === 'auto') {
-            document.body.classList.add('auto');
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            document.body.classList.toggle('lightmode', !prefersDark);
-        }
-    }, [theme]); 
-
-    useEffect(() => {
-        localStorage.setItem('compactMode', String(isCompact));
-        document.body.classList.toggle('compact', isCompact);
-    }, [isCompact]); 
-
-    useEffect(() => {
-        localStorage.setItem('privacyMode', String(isPrivacyMode));
-        document.body.classList.toggle('privacy', isPrivacyMode);
-    }, [isPrivacyMode]); 
-
-    useEffect(() => {
-        localStorage.setItem('panelSounds', String(panelSounds));
-    }, [panelSounds]); 
-
-    useEffect(() => {
-        localStorage.setItem('animations', String(animations));
-        document.body.classList.toggle('animationsDisabled', animations);
-    }, [animations]); 
-
-    const handleLanguageChange = (event: ChangeEvent<HTMLSelectElement>) => {
-        const newLanguage = event.target.value; 
-
-        updateAccountLanguage(newLanguage).then(() => {
-            i18n.changeLanguage(newLanguage);
-            setSelectedLanguage(newLanguage);
-        });
-    }; 
-
-    useEffect(() => {
-        setSelectedLanguage(i18n.language || 'en');
-    }, [i18n.language]); 
-
-    const ToggleRow = ({
-        label,
-        description,
-        offLabel,
-        onLabel,
-        value,
-        onToggle,
-        name,
-    }: {
-        label: React.ReactNode;
-        description: string;
-        offLabel?: string;
-        onLabel?: string;
-        value: boolean;
-        onToggle: (checked: boolean) => void;
-        name: string;
-    }) => (
-        <div className={'flex justify-between items-center'}>
-            <div>
-                <p className={'text-gray-100 mb-1'}>{label}</p>
-                <p className='text-sm text-gray-300'>{description}</p>
-            </div>
-            <div className={'flex gap-x-2 items-center'}>
-                <span className={'text-sm text-gray-300'}>{offLabel ?? 'Off'}</span>
-                <Switch name={name} onChange={() => onToggle(!value)} defaultChecked={value} />
-                <span className={'text-sm text-gray-300'}>{onLabel ?? 'On'}</span>
-            </div>
-        </div>
-    ); 
-
-    return (
-        <TitledGreyBox title={'Appearance'}>
-            <div className='space-y-5'>
-                {langSwitch && languages.length > 1 && (
-                    <div className={'flex justify-between items-center'}>
-                        <div className='flex-1'>
-                            <p className={'text-gray-100 mb-1'}>Panel Language</p>
-                            <p className='text-sm text-gray-300'>Use the panel in different languages</p>
-                        </div>
-                        <Select
-                            value={selectedLanguage}
-                            className={'!w-auto min-w-40 !pr-10'}
-                            onChange={handleLanguageChange}
-                        >
-                            {languages.map((lang: { key: string; name: string }) => (
-                                <option key={lang.key} value={lang.key}>
-                                    {lang.name}
-                                </option>
-                            ))}
-                        </Select>
-                    </div>
-                )}
-                {modeToggler && (
-                    <div className={'flex justify-between items-center'}>
-                        <div className='flex-1'>
-                            <p className={'text-gray-100 mb-1'}>Light/Dark Mode</p>
-                            <p className='text-sm text-gray-300'>Choose the style that suits you best</p>
-                        </div>
-                        <Button.Text
-                            className={`flex gap-1 !rounded-r-none min-w-20 ${theme === 'light' ? '!bg-gray-500' : ''}`}
-                            onClick={() => setTheme('light')}
-                        >
-                            <SunIcon className='w-5' />
-                            Light
-                        </Button.Text>
-                        <Button.Text
-                            className={`flex gap-1 !rounded-none min-w-20 ${
-                                theme === 'darkmode' ? '!bg-gray-500' : ''
-                            }`}
-                            onClick={() => setTheme('darkmode')}
-                        >
-                            <MoonIcon className='w-5' />
-                            Dark
-                        </Button.Text>
-                        <Button.Text
-                            className={`flex gap-1 !rounded-none min-w-20 ${theme === 'oled' ? '!bg-gray-500' : ''}`}
-                            onClick={() => setTheme('oled')}
-                        >
-                            <EyeIcon className='w-5' />
-                            Oled
-                        </Button.Text>
-                        <Button.Text
-                            className={`flex gap-1 !rounded-l-none min-w-20 ${theme === 'auto' ? '!bg-gray-500' : ''}`}
-                            onClick={() => setTheme('auto')}
-                        >
-                            <DesktopComputerIcon className='w-5' />
-                            Auto
-                        </Button.Text>
-                    </div>
-                )}
-                <ToggleRow
-                    label={'Display Mode'}
-                    description={'Toggle between normal and compact display modes'}
-                    value={isCompact}
-                    onToggle={setIsCompact}
-                    onLabel={'Compact'}
-                    offLabel={'Normal'}
-                    name={'compact'}
-                />
-                <ToggleRow
-                    label={'Panel Sounds'}
-                    description={'Play a sound at crucial moments in the panel'}
-                    value={panelSounds}
-                    onToggle={setPanelSounds}
-                    name={'panel-sounds'}
-                />
-                <ToggleRow
-                    label={'Privacy Mode'}
-                    description={'Hide sensitive information in the panel'}
-                    value={isPrivacyMode}
-                    onToggle={setIsPrivacyMode}
-                    name={'privacy'}
-                />
-                <ToggleRow
-                    label={'Animations'}
-                    description={'Enable or disable animations in the panel'}
-                    value={animations}
-                    onToggle={setAnimations}
-                    name={'animations'}
-                />
-            </div>
-        </TitledGreyBox>
-    );
-}; 
-
-export default AppearanceWrapper; 
-EOF
-        success "AppearanceWrapper.tsx Replaced!"
-        info "Compiling panel... (Please wait)"
-        ( yarn build > /dev/null 2>&1 ) & spinner $!
-
-        # 4. RegisterController.php
-        info "Fixing RegisterController.php..."
-        rm -f app/Http/Controllers/Auth/RegisterController.php
-        cat << 'EOF' > app/Http/Controllers/Auth/RegisterController.php
-<?php 
-
-namespace Pterodactyl\Http\Controllers\Auth; 
-
-use Illuminate\Http\Request;
-use Pterodactyl\Models\User;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Contracts\View\View;
-use Illuminate\Database\Eloquent\ModelNotFoundException; 
-
-class RegisterController extends AbstractRegisterController
-{
-    /**
-     * Handle all incoming requests for the authentication routes and render the
-     * base authentication view component. React will take over at this point and
-     * turn the register area into an SPA.
-     */
-    public function index(): View
-    {
-        return view('templates/auth.core');
-    } 
-
-    /**
-     * Handle a register request to the application.
-     *
-     * @throws \Pterodactyl\Exceptions\DisplayException
-     * @throws \Illuminate\Validation\ValidationException
-     */
-    public function register(Request $request): JsonResponse
-    {
-        if ($this->hasTooManyLoginAttempts($request)) {
-            $this->fireLockoutEvent($request);
-            $this->sendLockoutResponse($request);
-        } 
-
-        try {
-            $user = User::where('email', $request->input('email'))->orWhere('username', $request->input('username'))->first(); 
-
-            if ($user) {
-                return response()->json(['error' => 'The email or username is already taken.'], 400);
-            }
-        } catch (ModelNotFoundException) {
-            $this->sendFailedRegisterResponse($request);
-        } 
-
-        return $this->sendRegisterResponse($request);
+class ArixRequest extends AdminFormRequest {
+    public function rules(): array {
+        return [
+            'logo' => ['nullable', 'string'],
+            'logoLight' => 'nullable|string',
+            'fullLogo' => 'nullable|boolean',
+            'logoHeight' => 'nullable|integer',
+            'discord' => 'nullable|string',
+            'support' => 'nullable|string',
+            'extension_icons' => 'nullable|string',
+        ];
     }
 }
 EOF
-        success "RegisterController.php Replaced!"
-        info "Compiling panel final step... (Please wait)"
-        ( yarn build > /dev/null 2>&1 ) & spinner $!
-        cd /var/www/pterodactyl
-grep -rl "2.1.[0-9]" resources/ config/ app/ 2>/dev/null | xargs sed -i 's/2.1.[0-9]/2.1.2/g'
-php artisan view:clear
-php artisan optimize:clear
+
+cat << 'EOF' > app/Http/Controllers/Admin/Arix/ArixController.php
+<?php
+namespace Pterodactyl\Http\Controllers\Admin\Arix; 
+
+use Prologue\Alerts\AlertsMessageBag;
+use Illuminate\View\Factory as ViewFactory;
+use Pterodactyl\Http\Controllers\Controller;
+use Pterodactyl\Http\Requests\Admin\Arix\ArixRequest;
+use Pterodactyl\Contracts\Repository\SettingsRepositoryInterface; 
+
+class ArixController extends Controller
+{
+    public function __construct(private AlertsMessageBag $alert, private SettingsRepositoryInterface $settings, private ViewFactory $view) {} 
+
+    private function responseData() {
+        return [
+            'logo' => (string) $this->settings->get('settings::arix:general:logo', '/arix/Arix.png'),
+            'logoLight' => (string) $this->settings->get('settings::arix:general:logoLight', '/arix/Arix.png'),
+            'fullLogo' => filter_var($this->settings->get('settings::arix:general:fullLogo', false), FILTER_VALIDATE_BOOLEAN),
+            'logoHeight' => (int) $this->settings->get('settings::arix:general:logoHeight', 32),
+            'discord' => (string) $this->settings->get('settings::arix:general:discord', ''),
+            'support' => (string) $this->settings->get('settings::arix:general:support', ''),
+            'extension_icons' => (string) $this->settings->get('settings::arix:general:extension_icons', '{}'),
+        ];
+    } 
+
+    public function index(): \Illuminate\Http\JsonResponse { return response()->json($this->responseData()); } 
+
+    public function store(ArixRequest $request) {
+        // $request->input() ব্যবহার করছি যাতে কোনো ডেটা লস্ট না হয়
+        $settings = [
+            'logo' => (string) $request->input('logo', '/arix/Arix.png'),
+            'logoLight' => (string) $request->input('logoLight', '/arix/Arix.png'),
+            'fullLogo' => filter_var($request->input('fullLogo', false), FILTER_VALIDATE_BOOLEAN),
+            'logoHeight' => (int) $request->input('logoHeight', 32),
+            'discord' => (string) $request->input('discord', ''),
+            'support' => (string) $request->input('support', ''),
+            'extension_icons' => (string) $request->input('extension_icons', '{}'),
+        ]; 
+
+        foreach ($settings as $key => $value) { 
+            $this->settings->set('settings::arix:general:' . $key, $value); 
+        }
+        
+        // ফাইলে পারফেক্টলি রাইট করা
+        @file_put_contents(public_path('extension_icons.json'), $settings['extension_icons']);
+        
+        $this->alert->success('Settings updated successfully.')->flash();
+        return response()->json($this->responseData());
+    }
+}
+EOF
+
 cd /var/www/pterodactyl
-sed -i "s/'version' => '[0-9.]*'/'version' => '1.15.1'/g" config/app.php
-php artisan config:clear
+php artisan optimize:clear 
+
+cd /var/www/pterodactyl 
+
+php -r '
+$file = "app/Models/Server.php";
+$content = file_get_contents($file); 
+
+// ১. আগে যত ভুল জায়গায় canBeReinstalled অ্যাড হয়েছে, সব মুছে পরিষ্কার করা
+$content = preg_replace("/\s*public function canBeReinstalled\(\)\s*\{\s*return true;\s*\}/s", "", $content); 
+
+// ২. ফাইলের একেবারে শেষের } (ব্র্যাকেট) খুঁজে তার ঠিক আগে মেথডটা বসানো
+$pos = strrpos($content, "}");
+if ($pos !== false) {
+    // শেষ ব্র্যাকেটের পরের সব ফালতু কোড বা স্পেস কেটে ফেলা
+    $content = substr($content, 0, $pos);
+    
+    // একদম সঠিক জায়গায় ফাংশন বসিয়ে সুন্দরভাবে ক্লাস ক্লোজ করা
+    $content .= "\n    public function canBeReinstalled()\n    {\n        return true;\n    }\n}\n";
+    
+    file_put_contents($file, $content);
+    echo "\n\033[0;32m[SUCCESS] Server.php is Fixed! Manage page will work perfectly now.\033[0m\n\n";
+}
+' 
+
+# 3. লারাভেলের ক্যাশ ক্লিয়ার করা
 php artisan optimize:clear
-cd /var/www/pterodactyl
 
         echo ""
         echo -e "${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
-        typewriter "      🛠️ FIX ISSUES APPLIED SUCCESSFULLY! 🛠️      "
+        typewriter "      🚀 NEW FEATURES APPLIED SUCCESSFULLY! 🚀    "
         echo -e "${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
         echo ""
         read -p "Press Enter to return to main menu..."
@@ -1389,7 +1137,7 @@ EOF
             chmod -R 775 storage/* bootstrap/cache/
             chown -R www-data:www-data /var/www/pterodactyl/*
         ) & spinner $! 
-cd /var/www/pterodactyl 
+        cd /var/www/pterodactyl 
         
         # 1. RouterElements.tsx
         info "Fixing RouterElements.tsx..."
@@ -2208,17 +1956,6 @@ EOF
         success "RegisterController.php Replaced!"
         info "Compiling panel final step... (Please wait)"
         ( yarn build > /dev/null 2>&1 ) & spinner $!
-        cd /var/www/pterodactyl
-sed -i "s/'version' => '[0-9.]*'/'version' => '1.15.1'/g" config/app.php
-php artisan config:clear
-php artisan optimize:clear
-cd /var/www/pterodactyl
-grep -rl "2.1.[0-9]" resources/ config/ app/ 2>/dev/null | xargs sed -i 's/2.1.[0-9]/2.1.2/g'
-php artisan view:clear
-php artisan optimize:clear
-
-
-
 
         # ==========================================
         # COMPLETION
