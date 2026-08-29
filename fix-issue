@@ -699,11 +699,10 @@ class RegisterController extends AbstractRegisterController
 EOF
 success "RegisterController.php Replaced!"
 
-
 # ==========================================
-# APPLY TRANSLATION FIXES (PART 1)
+# APPLY TRANSLATION FIXES (PART 1 & 2)
 # ==========================================
-info "Applying Translation Fixes (Part 1)..."
+info "Applying Translation Fixes (Part 1 & 2)..."
 cat << 'EOF' > fix_translations.js
 const fs = require('fs');
 const path = require('path'); 
@@ -762,20 +761,8 @@ files.forEach(file => {
     }
 }); 
 EOF
-
 node fix_translations.js > /dev/null 2>&1
-success "Translation Fixes (Part 1) Applied!"
 
-info "Rebuilding panel for Part 1... (Please wait)"
-( export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"; yarn build:production > /dev/null 2>&1 ) & spinner $!
-php artisan view:clear > /dev/null 2>&1
-php artisan optimize:clear > /dev/null 2>&1
-
-
-# ==========================================
-# APPLY TRANSLATION FIXES (PART 2)
-# ==========================================
-info "Applying SSH and API Keys Translation Fixes (Part 2)..."
 cat << 'EOF' > fix_translations_2.js
 const fs = require('fs');
 const path = require('path'); 
@@ -823,21 +810,220 @@ files.forEach(file => {
     }
 }); 
 EOF
-
 node fix_translations_2.js > /dev/null 2>&1
-success "Translation Fixes (Part 2) Applied!"
+success "Translation Fixes (Part 1 & 2) Applied!"
 
 
 # ==========================================
-# FINAL BUILD & CACHE CLEAR
+# APPLY TRANSLATION FIXES (PART 3 & FINAL) - EXACTLY AS PROVIDED
 # ==========================================
-info "Final Rebuild & Cache Clearance... (Please wait)"
-( export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"; yarn build:production > /dev/null 2>&1 ) & spinner $!
+info "Applying Translation Fixes (Part 3 & Final)..."
+
+cd /var/www/pterodactyl 
+
+cat << 'EOF' > fix_translations_3.js
+const fs = require('fs');
+const path = require('path'); 
+
+const replacements = {
+    // API Keys
+    'apiKey.never': 'Never',
+    
+    // SSH Keys
+    'sshKey.create-new-ssh-key': 'Create a new SSH key for your account.',
+    'sshKey.createForm.upload-key': 'Upload Public Key',
+    
+    // Update Email
+    'update-email.title': 'Update Email Address',
+    'update-email.description': 'Enter your new email address and confirm your password to save changes.',
+    
+    // Fallback for Account Settings (In case it's in a different component)
+    'account-settings': 'Account Settings'
+}; 
+
+function walkSync(dir, filelist = []) {
+    if (!fs.existsSync(dir)) return filelist;
+    fs.readdirSync(dir).forEach(file => {
+        const dirFile = path.join(dir, file);
+        try { filelist = walkSync(dirFile, filelist); }
+        catch (err) { if (err.code === 'ENOTDIR' || err.code === 'EBADF') filelist.push(dirFile); }
+    });
+    return filelist;
+} 
+
+const files = walkSync('/var/www/pterodactyl/resources/scripts').filter(f => f.endsWith('.tsx') || f.endsWith('.ts')); 
+
+let patchedCount = 0;
+files.forEach(file => {
+    let content = fs.readFileSync(file, 'utf8');
+    let original = content; 
+
+    for (const [key, value] of Object.entries(replacements)) {
+        // Matches t('key'), t("key"), or t(`key`)
+        const regex = new RegExp(`t\\(['"\`]${key}['"\`]\\)`, 'g');
+        content = content.replace(regex, `'${value.replace(/'/g, "\\'")}'`);
+    } 
+
+    if (content !== original) {
+        fs.writeFileSync(file, content, 'utf8');
+        console.log(`Fixed translations in: ${file.replace('/var/www/pterodactyl/', '')}`);
+        patchedCount++;
+    }
+}); 
+
+console.log(`\nSuccessfully fixed final missing translations in ${patchedCount} files!`);
+EOF 
+
+# স্ক্রিপ্টটি রান করা হচ্ছে
+node fix_translations_3.js > /dev/null 2>&1
+
+# পরিবর্তনগুলো সেভ করার জন্য ফাইনাল বিল্ড
+export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
+( yarn build:production > /dev/null 2>&1 ) & spinner $!
+
+# প্যানেলের ক্যাশ ক্লিয়ার করা
 php artisan view:clear > /dev/null 2>&1
 php artisan optimize:clear > /dev/null 2>&1
+cd /var/www/pterodactyl 
 
+cat << 'EOF' > fix_translations_final.js
+const fs = require('fs');
+const path = require('path'); 
+
+const replacements = {
+    // API Keys Page
+    'apiKey.create-new-api-key': 'Create a new API key',
+    'apiKey.expiresAt': 'Expires At',
+    'apiKey.expiresAt-description': 'Leave blank to never expire.',
+    
+    // Trashbin Page
+    'trashbin.description': 'Manage your deleted files and folders.',
+    'trashbin.will-be-deleted': 'These items will be permanently deleted.',
+    'trashbin.is-empty': 'The trashbin is currently empty.',
+    
+    // Account Settings Tabs
+    'general': 'General',
+    'security': 'Security',
+    'ssh-keys': 'SSH Keys',
+    'api-keys': 'API Keys',
+    'activity': 'Activity'
+}; 
+
+function walkSync(dir, filelist = []) {
+    if (!fs.existsSync(dir)) return filelist;
+    fs.readdirSync(dir).forEach(file => {
+        const dirFile = path.join(dir, file);
+        try { filelist = walkSync(dirFile, filelist); }
+        catch (err) { if (err.code === 'ENOTDIR' || err.code === 'EBADF') filelist.push(dirFile); }
+    });
+    return filelist;
+} 
+
+const files = walkSync('/var/www/pterodactyl/resources/scripts').filter(f => f.endsWith('.tsx') || f.endsWith('.ts')); 
+
+let patchedCount = 0;
+files.forEach(file => {
+    let content = fs.readFileSync(file, 'utf8');
+    let original = content; 
+
+    for (const [key, value] of Object.entries(replacements)) {
+        // ১. t('key') ফরমেট ফিক্স করা (যেকোনো স্পেস বা কোটেশন সহ)
+        const safeKey = key.replace(/\./g, '\\.');
+        const regex = new RegExp(`t\\(\\s*['"\`]${safeKey}['"\`]\\s*\\)`, 'g');
+        content = content.replace(regex, `"${value}"`);
+        
+        // ২. যদি কোডে সরাসরি >trashbin.is-empty< এভাবে লেখা থাকে, সেটাও ফিক্স করা
+        if (key.includes('.')) {
+            const rawRegex = new RegExp(`>\\s*${safeKey}\\s*<`, 'g');
+            content = content.replace(rawRegex, `>${value}<`);
+        }
+    } 
+
+    if (content !== original) {
+        fs.writeFileSync(file, content, 'utf8');
+        console.log(`Fixed translations in: ${file.replace('/var/www/pterodactyl/', '')}`);
+        patchedCount++;
+    }
+}); 
+
+console.log(`\nSuccessfully fixed ALL remaining UI texts in ${patchedCount} files!`);
+EOF 
+
+# স্ক্রিপ্টটি রান করা হচ্ছে
+node fix_translations_final.js > /dev/null 2>&1
+
+# পরিবর্তনগুলো সেভ করার জন্য ফাইনাল বিল্ড
+export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
+( yarn build:production > /dev/null 2>&1 ) & spinner $!
+
+# প্যানেলের ক্যাশ ক্লিয়ার করা
+php artisan view:clear > /dev/null 2>&1
+php artisan optimize:clear > /dev/null 2>&1
 chown -R www-data:www-data /var/www/pterodactyl 2>/dev/null || true
 chmod -R 755 storage/* bootstrap/cache/ 2>/dev/null || true
+php artisan optimize:clear > /dev/null 2>&1
+
+# ==========================================
+# APPLY STUBBORN TRASHBIN FIX
+# ==========================================
+info "Applying Stubborn Trashbin Fix..."
+
+cd /var/www/pterodactyl
+
+cat << 'EOF' > fix_trashbin_stubborn.js
+const fs = require('fs');
+const path = require('path');
+
+function walkSync(dir, filelist = []) {
+    if (!fs.existsSync(dir)) return filelist;
+    fs.readdirSync(dir).forEach(file => {
+        const dirFile = path.join(dir, file);
+        try { 
+            if (fs.statSync(dirFile).isDirectory()) {
+                filelist = walkSync(dirFile, filelist);
+            } else if (dirFile.endsWith('.tsx') || dirFile.endsWith('.ts')) {
+                filelist.push(dirFile);
+            }
+        } catch (err) {}
+    });
+    return filelist;
+}
+
+const files = walkSync('/var/www/pterodactyl/resources/scripts');
+let patchedCount = 0;
+
+files.forEach(file => {
+    let content = fs.readFileSync(file, 'utf8');
+    let original = content;
+
+    // ১. যদি t() এর ভেতর থাকে
+    content = content.replace(/t\(\s*['"\`]trashbin\.will-be-deleted['"\`]\s*\)/g, '"These items will be permanently deleted."');
+    
+    // ২. যদি সরাসরি কোটেশনের ভেতর হার্ডকোড করা থাকে ("trashbin.will-be-deleted")
+    content = content.replace(/['"\`]trashbin\.will-be-deleted['"\`]/g, '"These items will be permanently deleted."');
+    
+    // ৩. যদি একদম কাঁচা টেক্সট হিসেবে থাকে
+    content = content.replace(/trashbin\.will-be-deleted/g, 'These items will be permanently deleted.');
+
+    if (content !== original) {
+        fs.writeFileSync(file, content, 'utf8');
+        console.log(`Fixed stubborn trashbin key in: ${file.replace('/var/www/pterodactyl/', '')}`);
+        patchedCount++;
+    }
+});
+
+console.log(`\nSuccessfully fixed stubborn key in ${patchedCount} files!`);
+EOF
+
+# স্ক্রিপ্টটি রান করা হচ্ছে
+node fix_trashbin_stubborn.js > /dev/null 2>&1
+
+# পরিবর্তনগুলো সেভ করার জন্য ফাইনাল বিল্ড
+export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
+( yarn build:production > /dev/null 2>&1 ) & spinner $!
+
+# প্যানেলের ক্যাশ ক্লিয়ার করা
+php artisan view:clear > /dev/null 2>&1
 php artisan optimize:clear > /dev/null 2>&1
 
 echo -e "\n${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
