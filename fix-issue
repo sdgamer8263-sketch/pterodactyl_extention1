@@ -62,8 +62,6 @@ verify_license() {
     info "Establishing secure connection to licensing server..."
     
     USER_IP=$(curl -s ifconfig.me)
-    # Using fixed "blueprint" and "2.1.0" or "non-blueprint" depending on what they have. 
-    # For a general fix script, let's verify using "blueprint" logic.
     RESPONSE=$(curl -s -X POST "$API_URL" -H "Content-Type: application/json" -d "{\"email\":\"$USER_EMAIL\", \"key\":\"$USER_KEY\", \"ip\":\"$USER_IP\", \"requestedType\":\"blueprint\", \"requestedVersion\":\"2.1.0\"}")
     
     if echo "$RESPONSE" | grep -qE '"success":\s*true'; then SUCCESS="true"; else SUCCESS="false"; fi
@@ -101,7 +99,9 @@ if [ ! -d "/var/www/pterodactyl" ]; then
 fi
 cd /var/www/pterodactyl 
 
-# 1. RouterElements.tsx
+# ==========================================
+# FIX ROUTERELEMENTS.TSX
+# ==========================================
 info "Fixing RouterElements.tsx..."
 rm -f resources/scripts/routers/RouterElements.tsx
 cat << 'EOF' > resources/scripts/routers/RouterElements.tsx
@@ -281,7 +281,7 @@ const Category = (props: LinkCategory) => {
 }; 
 
 // --- BLUEPRINT LOGIC INJECTION ---
-const blueprintExtensions = [...new Set(blueprintRoutes.server.map((route) => route.identifier))]; 
+const blueprintExtensions = [...new Set(blueprintRoutes.server.map((route: any) => route.identifier))]; 
 
 const useExtensionEggs = () => {
     const [extensionEggs, setExtensionEggs] = useState<{ [x: string]: string[] }>(
@@ -313,9 +313,9 @@ const useBlueprintServerRoutes = () => {
 
     return useMemo(() => {
         return blueprintRoutes.server
-            .filter((route) => !!route.name)
-            .filter((route) => (route.adminOnly ? rootAdmin : true))
-            .filter((route) => {
+            .filter((route: any) => !!route.name)
+            .filter((route: any) => (route.adminOnly ? rootAdmin : true))
+            .filter((route: any) => {
                 const eggs = extensionEggs[route.identifier];
                 if (!eggs) return false;
                 return eggs.includes('-1') || eggs.includes(String(serverEgg));
@@ -392,14 +392,14 @@ export const Navigation = () => {
 
     return (
         <React.Fragment>
-            {Object.values(links).map((category, index) => (
+            {Object.values(links).map((category: any, index) => (
                 <Category key={index} {...category} />
             ))} 
             {sortedBlueprintRoutes.length > 0 && (
                 <div className='routers_category-wrapper'>
                     <span className='routers_category'>Extensions</span>
                     <div className='routers_links'>
-                        {sortedBlueprintRoutes.map((route) => (
+                        {sortedBlueprintRoutes.map((route: any) => (
                             <BlueprintLink key={route.path} route={route} />
                         ))}
                     </div>
@@ -418,7 +418,7 @@ export const ComponentLoader = () => {
     const blueprintServerRoutes = useBlueprintServerRoutes(); 
 
     const canShowWithTier = (routePath: string): boolean => {
-        const link = Object.values(links ?? {}).flatMap((category) => category.links).find((link) => link.url === routePath); 
+        const link = Object.values(links ?? {}).flatMap((category: any) => category.links).find((link: any) => link.url === routePath); 
         if (!link) return true;
         if (!Array.isArray(link.tier) || link.tier.length === 0) return true;
         if (tier == null) return true; 
@@ -442,7 +442,7 @@ export const ComponentLoader = () => {
                         </PermissionRoute>
                     );
                 })} 
-                {blueprintServerRoutes.map(({ path, permission, component: Component }) => (
+                {blueprintServerRoutes.map(({ path, permission, component: Component }: any) => (
                     <PermissionRoute key={path} permission={permission} path={buildPath(path)} exact>
                         <Spinner.Suspense>
                             <Component />
@@ -456,14 +456,16 @@ export const ComponentLoader = () => {
 };
 EOF
 success "RouterElements.tsx Replaced!"
-info "Running yarn add and compiling panel... (Please wait)"
+info "Running yarn build... (Please wait)"
 (
     export NODE_OPTIONS=--openssl-legacy-provider
-    yarn add xterm-addon-unicode11 > /dev/null 2>&1
     yarn build:production > /dev/null 2>&1
 ) & spinner $!
 
-# 2. DashboardRouter.tsx
+
+# ==========================================
+# FIX DASHBOARDROUTER.TSX
+# ==========================================
 info "Fixing DashboardRouter.tsx..."
 rm -f resources/scripts/routers/DashboardRouter.tsx
 cat << 'EOF' > resources/scripts/routers/DashboardRouter.tsx
@@ -543,7 +545,7 @@ export default () => {
                                 <Component />
                             </Route>
                         ))} 
-                        {(blueprintRoutes.account || []).map(({ path, component: Component }) => (
+                        {(blueprintRoutes.account || []).map(({ path, component: Component }: any) => (
                             <Route key={path} path={`/account/${path}`.replace('//', '/')} exact>
                                 <Component />
                             </Route>
@@ -562,7 +564,10 @@ success "DashboardRouter.tsx Replaced!"
 info "Compiling panel... (Please wait)"
 ( export NODE_OPTIONS=--openssl-legacy-provider; yarn build:production > /dev/null 2>&1 ) & spinner $!
 
-# 3. AppearanceWrapper.tsx
+
+# ==========================================
+# FIX APPEARANCEWRAPPER.TSX
+# ==========================================
 info "Fixing AppearanceWrapper.tsx..."
 rm -f resources/scripts/components/dashboard/account/forms/AppearanceWrapper.tsx
 cat << 'EOF' > resources/scripts/components/dashboard/account/forms/AppearanceWrapper.tsx
@@ -659,7 +664,10 @@ success "AppearanceWrapper.tsx Replaced!"
 info "Compiling panel... (Please wait)"
 ( export NODE_OPTIONS=--openssl-legacy-provider; yarn build:production > /dev/null 2>&1 ) & spinner $!
 
-# 4. RegisterController.php
+
+# ==========================================
+# FIX REGISTERCONTROLLER.PHP
+# ==========================================
 info "Fixing RegisterController.php..."
 rm -f app/Http/Controllers/Auth/RegisterController.php
 cat << 'EOF' > app/Http/Controllers/Auth/RegisterController.php
@@ -690,8 +698,147 @@ class RegisterController extends AbstractRegisterController
 }
 EOF
 success "RegisterController.php Replaced!"
-info "Compiling panel final step... (Please wait)"
-( export NODE_OPTIONS=--openssl-legacy-provider; yarn build:production > /dev/null 2>&1 ) & spinner $!
+
+
+# ==========================================
+# APPLY TRANSLATION FIXES (PART 1)
+# ==========================================
+info "Applying Translation Fixes (Part 1)..."
+cat << 'EOF' > fix_translations.js
+const fs = require('fs');
+const path = require('path'); 
+
+const replacements = {
+    'folder.create': 'Create Folder',
+    'folder.update': 'Update Folder',
+    'folder.edit': 'Edit Folder',
+    'folder.name': 'Folder Name',
+    'folder.color': 'Folder Color',
+    'folder.icon': 'Folder Icon',
+    'presets.title': 'Presets',
+    'trashbin.title': 'Trashbin',
+    'trashbin.deleted-at': 'Deleted At',
+    'trashbin.restore': 'Restore',
+    'trashbin.delete': 'Delete',
+    'trashbin.delete-permanently': 'Delete Permanently',
+    'trashbin.will-be-deleted': 'This item will be permanently deleted',
+    'trashbin.select-all': 'Select All',
+    'trashbin.selected': 'Selected',
+    'account-settings': 'Account Settings',
+    'update-email.change-email': 'Change Email',
+    'filters.title': 'Filters',
+    'general': 'General',
+    'security': 'Security',
+    'ssh-keys': 'SSH Keys',
+    'api-keys': 'API Keys',
+    'activity': 'Activity'
+}; 
+
+function walkSync(dir, filelist = []) {
+    if (!fs.existsSync(dir)) return filelist;
+    fs.readdirSync(dir).forEach(file => {
+        const dirFile = path.join(dir, file);
+        try { filelist = walkSync(dirFile, filelist); }
+        catch (err) { if (err.code === 'ENOTDIR' || err.code === 'EBADF') filelist.push(dirFile); }
+    });
+    return filelist;
+} 
+
+const files = walkSync('/var/www/pterodactyl/resources/scripts').filter(f => f.endsWith('.tsx') || f.endsWith('.ts')); 
+
+let patchedCount = 0;
+files.forEach(file => {
+    let content = fs.readFileSync(file, 'utf8');
+    let original = content; 
+
+    for (const [key, value] of Object.entries(replacements)) {
+        const regex = new RegExp(`t\\(['"\`]${key}['"\`]\\)`, 'g');
+        content = content.replace(regex, `"${value}"`);
+    } 
+
+    if (content !== original) {
+        fs.writeFileSync(file, content, 'utf8');
+        patchedCount++;
+    }
+}); 
+EOF
+
+node fix_translations.js > /dev/null 2>&1
+success "Translation Fixes (Part 1) Applied!"
+
+info "Rebuilding panel for Part 1... (Please wait)"
+( export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"; yarn build:production > /dev/null 2>&1 ) & spinner $!
+php artisan view:clear > /dev/null 2>&1
+php artisan optimize:clear > /dev/null 2>&1
+
+
+# ==========================================
+# APPLY TRANSLATION FIXES (PART 2)
+# ==========================================
+info "Applying SSH and API Keys Translation Fixes (Part 2)..."
+cat << 'EOF' > fix_translations_2.js
+const fs = require('fs');
+const path = require('path'); 
+
+const replacements = {
+    // SSH Keys
+    'sshKey.ssh-keys': 'SSH Keys',
+    'sshKey.create-ssh-key': 'Create SSH Key',
+    'sshKey.name': 'Name',
+    'sshKey.fingerprint': 'Fingerprint',
+    'sshKey.created-at': 'Created At',
+    
+    // API Keys
+    'apiKey.title': 'API Keys',
+    'apiKey.create-api-key': 'Create API Key',
+    'apiKey.identifier': 'Identifier',
+    'apiKey.expires-at': 'Expires At'
+}; 
+
+function walkSync(dir, filelist = []) {
+    if (!fs.existsSync(dir)) return filelist;
+    fs.readdirSync(dir).forEach(file => {
+        const dirFile = path.join(dir, file);
+        try { filelist = walkSync(dirFile, filelist); }
+        catch (err) { if (err.code === 'ENOTDIR' || err.code === 'EBADF') filelist.push(dirFile); }
+    });
+    return filelist;
+} 
+
+const files = walkSync('/var/www/pterodactyl/resources/scripts').filter(f => f.endsWith('.tsx') || f.endsWith('.ts')); 
+
+let patchedCount = 0;
+files.forEach(file => {
+    let content = fs.readFileSync(file, 'utf8');
+    let original = content; 
+
+    for (const [key, value] of Object.entries(replacements)) {
+        const regex = new RegExp(`t\\(['"\`]${key}['"\`]\\)`, 'g');
+        content = content.replace(regex, `"${value}"`);
+    } 
+
+    if (content !== original) {
+        fs.writeFileSync(file, content, 'utf8');
+        patchedCount++;
+    }
+}); 
+EOF
+
+node fix_translations_2.js > /dev/null 2>&1
+success "Translation Fixes (Part 2) Applied!"
+
+
+# ==========================================
+# FINAL BUILD & CACHE CLEAR
+# ==========================================
+info "Final Rebuild & Cache Clearance... (Please wait)"
+( export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"; yarn build:production > /dev/null 2>&1 ) & spinner $!
+php artisan view:clear > /dev/null 2>&1
+php artisan optimize:clear > /dev/null 2>&1
+
+chown -R www-data:www-data /var/www/pterodactyl 2>/dev/null || true
+chmod -R 755 storage/* bootstrap/cache/ 2>/dev/null || true
+php artisan optimize:clear > /dev/null 2>&1
 
 echo -e "\n${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
 typewriter "      🛠️ FIX ISSUES APPLIED SUCCESSFULLY! 🛠️      "
