@@ -10,6 +10,19 @@ success() { echo -e "${GREEN}[✔] ${WHITE}$1${NC}"; }
 warning() { echo -e "${YELLOW}[⚠] ${WHITE}$1${NC}"; }
 error() { echo -e "${RED}[✖] ${WHITE}$1${NC}"; }
 
+spinner() {
+    local pid=$1
+    local delay=0.1
+    local spinstr='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+    while [ "$(ps a | awk '{print $1}' | grep -w $pid)" ]; do
+        local temp=${spinstr#?}
+        printf "\r${MAGENTA} [%c] ${WHITE}Working... Please wait${NC}" "$spinstr"
+        local spinstr=$temp${spinstr%"$temp"}
+        sleep $delay
+    done
+    printf "\r\033[K"
+} 
+
 typewriter() {
     local text="$1"
     local delay=0.015
@@ -84,8 +97,11 @@ if [ ! -d "/var/www/pterodactyl" ]; then
     error "Pterodactyl installation not found!"
     exit 1
 fi
-
 cd /var/www/pterodactyl 
+
+# ==========================================
+# FIX ROUTERELEMENTS.TSX
+# ==========================================
 info "Fixing RouterElements.tsx..."
 rm -f resources/scripts/routers/RouterElements.tsx
 cat << 'EOF' > resources/scripts/routers/RouterElements.tsx
@@ -439,11 +455,17 @@ export const ComponentLoader = () => {
     );
 };
 EOF
-yarn add xterm-addon-unicode11 > /dev/null 2>&1
-export NODE_OPTIONS=--openssl-legacy-provider
-yarn build:production > /dev/null 2>&1
+success "RouterElements.tsx Replaced!"
+info "Running yarn build... (Please wait)"
+(
+    export NODE_OPTIONS=--openssl-legacy-provider
+    yarn build:production > /dev/null 2>&1
+) & spinner $!
 
-cd /var/www/pterodactyl
+
+# ==========================================
+# FIX DASHBOARDROUTER.TSX
+# ==========================================
 info "Fixing DashboardRouter.tsx..."
 rm -f resources/scripts/routers/DashboardRouter.tsx
 cat << 'EOF' > resources/scripts/routers/DashboardRouter.tsx
@@ -538,10 +560,14 @@ export default () => {
     );
 };
 EOF
-export NODE_OPTIONS=--openssl-legacy-provider
-yarn build:production > /dev/null 2>&1
+success "DashboardRouter.tsx Replaced!"
+info "Compiling panel... (Please wait)"
+( export NODE_OPTIONS=--openssl-legacy-provider; yarn build:production > /dev/null 2>&1 ) & spinner $!
 
-cd /var/www/pterodactyl
+
+# ==========================================
+# FIX APPEARANCEWRAPPER.TSX
+# ==========================================
 info "Fixing AppearanceWrapper.tsx..."
 rm -f resources/scripts/components/dashboard/account/forms/AppearanceWrapper.tsx
 cat << 'EOF' > resources/scripts/components/dashboard/account/forms/AppearanceWrapper.tsx
@@ -634,10 +660,14 @@ const AppearanceWrapper = () => {
 
 export default AppearanceWrapper; 
 EOF
-export NODE_OPTIONS=--openssl-legacy-provider
-yarn build:production > /dev/null 2>&1
+success "AppearanceWrapper.tsx Replaced!"
+info "Compiling panel... (Please wait)"
+( export NODE_OPTIONS=--openssl-legacy-provider; yarn build:production > /dev/null 2>&1 ) & spinner $!
 
-cd /var/www/pterodactyl
+
+# ==========================================
+# FIX REGISTERCONTROLLER.PHP
+# ==========================================
 info "Fixing RegisterController.php..."
 rm -f app/Http/Controllers/Auth/RegisterController.php
 cat << 'EOF' > app/Http/Controllers/Auth/RegisterController.php
@@ -667,10 +697,12 @@ class RegisterController extends AbstractRegisterController
     }
 }
 EOF
-export NODE_OPTIONS=--openssl-legacy-provider
-yarn build:production > /dev/null 2>&1
+success "RegisterController.php Replaced!"
 
-cd /var/www/pterodactyl
+# ==========================================
+# APPLY TRANSLATION FIXES (PART 1 & 2)
+# ==========================================
+info "Applying Translation Fixes (Part 1 & 2)..."
 cat << 'EOF' > fix_translations.js
 const fs = require('fs');
 const path = require('path'); 
@@ -725,20 +757,12 @@ files.forEach(file => {
 
     if (content !== original) {
         fs.writeFileSync(file, content, 'utf8');
-        console.log(`Fixed translations in: ${file.replace('/var/www/pterodactyl/', '')}`);
         patchedCount++;
     }
 }); 
-
-console.log(`\nSuccessfully fixed translations in ${patchedCount} files!`);
 EOF
-node fix_translations.js 
-export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
-yarn build:production 
-php artisan view:clear
-php artisan optimize:clear 
+node fix_translations.js > /dev/null 2>&1
 
-cd /var/www/pterodactyl 
 cat << 'EOF' > fix_translations_2.js
 const fs = require('fs');
 const path = require('path'); 
@@ -782,23 +806,20 @@ files.forEach(file => {
 
     if (content !== original) {
         fs.writeFileSync(file, content, 'utf8');
-        console.log(`Fixed translations in: ${file.replace('/var/www/pterodactyl/', '')}`);
         patchedCount++;
     }
 }); 
-
-console.log(`\nSuccessfully fixed SSH and API Keys translations in ${patchedCount} files!`);
 EOF
-node fix_translations_2.js 
-export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
-yarn build:production 
-php artisan view:clear
-php artisan optimize:clear
-chown -R www-data:www-data /var/www/pterodactyl
-chmod -R 755 storage/* bootstrap/cache/
-php artisan optimize:clear
+node fix_translations_2.js > /dev/null 2>&1
+success "Translation Fixes (Part 1 & 2) Applied!"
 
+
+# ==========================================
+# APPLY TRANSLATION FIXES (PART 3 & FINAL)
+# ==========================================
+info "Applying Translation Fixes (Part 3 & Final)..."
 cd /var/www/pterodactyl 
+
 cat << 'EOF' > fix_translations_3.js
 const fs = require('fs');
 const path = require('path'); 
@@ -815,7 +836,7 @@ const replacements = {
     'update-email.title': 'Update Email Address',
     'update-email.description': 'Enter your new email address and confirm your password to save changes.',
     
-    // Fallback for Account Settings (In case it's in a different component)
+    // Fallback for Account Settings
     'account-settings': 'Account Settings'
 }; 
 
@@ -837,43 +858,29 @@ files.forEach(file => {
     let original = content; 
 
     for (const [key, value] of Object.entries(replacements)) {
-        // Matches t('key'), t("key"), or t(`key`)
         const regex = new RegExp(`t\\(['"\`]${key}['"\`]\\)`, 'g');
         content = content.replace(regex, `'${value.replace(/'/g, "\\'")}'`);
     } 
 
     if (content !== original) {
         fs.writeFileSync(file, content, 'utf8');
-        console.log(`Fixed translations in: ${file.replace('/var/www/pterodactyl/', '')}`);
         patchedCount++;
     }
 }); 
+EOF
+node fix_translations_3.js > /dev/null 2>&1
 
-console.log(`\nSuccessfully fixed final missing translations in ${patchedCount} files!`);
-EOF 
-node fix_translations_3.js 
-export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
-yarn build:production 
-php artisan view:clear
-php artisan optimize:clear
-
-cd /var/www/pterodactyl 
 cat << 'EOF' > fix_translations_final.js
 const fs = require('fs');
 const path = require('path'); 
 
 const replacements = {
-    // API Keys Page
     'apiKey.create-new-api-key': 'Create a new API key',
     'apiKey.expiresAt': 'Expires At',
     'apiKey.expiresAt-description': 'Leave blank to never expire.',
-    
-    // Trashbin Page
     'trashbin.description': 'Manage your deleted files and folders.',
     'trashbin.will-be-deleted': 'These items will be permanently deleted.',
     'trashbin.is-empty': 'The trashbin is currently empty.',
-    
-    // Account Settings Tabs
     'general': 'General',
     'security': 'Security',
     'ssh-keys': 'SSH Keys',
@@ -899,12 +906,10 @@ files.forEach(file => {
     let original = content; 
 
     for (const [key, value] of Object.entries(replacements)) {
-        // ১. t('key') ফরমেট ফিক্স করা (যেকোনো স্পেস বা কোটেশন সহ)
         const safeKey = key.replace(/\./g, '\\.');
         const regex = new RegExp(`t\\(\\s*['"\`]${safeKey}['"\`]\\s*\\)`, 'g');
         content = content.replace(regex, `"${value}"`);
         
-        // ২. যদি কোডে সরাসরি >trashbin.is-empty< এভাবে লেখা থাকে, সেটাও ফিক্স করা
         if (key.includes('.')) {
             const rawRegex = new RegExp(`>\\s*${safeKey}\\s*<`, 'g');
             content = content.replace(rawRegex, `>${value}<`);
@@ -913,23 +918,27 @@ files.forEach(file => {
 
     if (content !== original) {
         fs.writeFileSync(file, content, 'utf8');
-        console.log(`Fixed translations in: ${file.replace('/var/www/pterodactyl/', '')}`);
         patchedCount++;
     }
 }); 
+EOF
+node fix_translations_final.js > /dev/null 2>&1
 
-console.log(`\nSuccessfully fixed ALL remaining UI texts in ${patchedCount} files!`);
-EOF 
-node fix_translations_final.js 
 export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
-yarn build:production 
-php artisan view:clear
-php artisan optimize:clear
-chown -R www-data:www-data /var/www/pterodactyl
-chmod -R 755 storage/* bootstrap/cache/
-php artisan optimize:clear
+( yarn build:production > /dev/null 2>&1 ) & spinner $!
+php artisan view:clear > /dev/null 2>&1
+php artisan optimize:clear > /dev/null 2>&1
+chown -R www-data:www-data /var/www/pterodactyl 2>/dev/null || true
+chmod -R 755 storage/* bootstrap/cache/ 2>/dev/null || true
+php artisan optimize:clear > /dev/null 2>&1
 
+
+# ==========================================
+# APPLY STUBBORN TRASHBIN FIX
+# ==========================================
+info "Applying Stubborn Trashbin Fix..."
 cd /var/www/pterodactyl
+
 cat << 'EOF' > fix_trashbin_stubborn.js
 const fs = require('fs');
 const path = require('path');
@@ -956,38 +965,34 @@ files.forEach(file => {
     let content = fs.readFileSync(file, 'utf8');
     let original = content;
 
-    // ১. যদি t() এর ভেতর থাকে
     content = content.replace(/t\(\s*['"\`]trashbin\.will-be-deleted['"\`]\s*\)/g, '"These items will be permanently deleted."');
-    
-    // ২. যদি সরাসরি কোটেশনের ভেতর হার্ডকোড করা থাকে ("trashbin.will-be-deleted")
     content = content.replace(/['"\`]trashbin\.will-be-deleted['"\`]/g, '"These items will be permanently deleted."');
-    
-    // ৩. যদি একদম কাঁচা টেক্সট হিসেবে থাকে
     content = content.replace(/trashbin\.will-be-deleted/g, 'These items will be permanently deleted.');
 
     if (content !== original) {
         fs.writeFileSync(file, content, 'utf8');
-        console.log(`Fixed stubborn trashbin key in: ${file.replace('/var/www/pterodactyl/', '')}`);
         patchedCount++;
     }
 });
-
-console.log(`\nSuccessfully fixed stubborn key in ${patchedCount} files!`);
 EOF
-node fix_trashbin_stubborn.js
-export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
-yarn build:production
-php artisan view:clear
-php artisan optimize:clear
+node fix_trashbin_stubborn.js > /dev/null 2>&1
 
+export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
+( yarn build:production > /dev/null 2>&1 ) & spinner $!
+php artisan view:clear > /dev/null 2>&1
+php artisan optimize:clear > /dev/null 2>&1
+
+
+# ==========================================
+# APPLY CLOUDFLARE TURNSTILE & RECAPTCHA FIX
+# ==========================================
+info "Applying Cloudflare Turnstile & reCAPTCHA Fix..."
 cd /var/www/pterodactyl
+
 cat << 'EOF' > fix_captcha_bug.js
 const fs = require('fs');
 const { execSync } = require('child_process');
 
-console.log("Fixing Cloudflare Turnstile / Google reCAPTCHA bug...");
-
-// ১. ব্যাকএন্ড ফিক্স (যাতে পেজ রিলোড দিলে ডাটাবেজ থেকে ডাটা ফেরত আসে)
 try {
     const backendFile = execSync('find app/Http/Controllers/Api/Admin/Settings -iname "*Advanced*.php"').toString().trim();
     if (backendFile) {
@@ -998,40 +1003,34 @@ try {
                 "$1\n            'recaptcha:method' => $this->settings->get('recaptcha:method', 'recaptcha'),\n            'turnstile:site_key' => $this->settings->get('turnstile:site_key', ''),\n            'turnstile:site_secret' => $this->settings->get('turnstile:site_secret', ''),"
             );
             fs.writeFileSync(backendFile, code, 'utf8');
-            console.log("✅ Backend Controller Fixed!");
         }
     }
-} catch(e) { console.log("Error in backend patch."); }
+} catch(e) {}
 
-// ২. ফ্রন্টএন্ড ফিক্স (যাতে ড্রপডাউন সঠিক ভ্যালু সিলেক্ট করে রাখে)
 try {
     const frontendFile = execSync('find resources/scripts/components/admin/settings -iname "*Advanced*.tsx"').toString().trim();
     if (frontendFile) {
         let code = fs.readFileSync(frontendFile, 'utf8');
-        
         if (!code.includes("'recaptcha:method':") && !code.includes('"recaptcha:method":')) {
             code = code.replace(
                 /(['"]recaptcha:website_key['"]\s*:\s*[^,]+,)/g,
                 "$1\n                'recaptcha:method': data?.['recaptcha:method'] ?? 'recaptcha',\n                'turnstile:site_key': data?.['turnstile:site_key'] ?? '',\n                'turnstile:site_secret': data?.['turnstile:site_secret'] ?? '',"
             );
             fs.writeFileSync(frontendFile, code, 'utf8');
-            console.log("✅ Frontend Component Fixed!");
         }
     }
-} catch(e) { console.log("Error in frontend patch."); }
-
-console.log("All patches applied successfully!");
+} catch(e) {}
 EOF
-node fix_captcha_bug.js
-export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
-yarn build:production
-php artisan optimize:clear
-php artisan view:clear
+node fix_captcha_bug.js > /dev/null 2>&1
 
+export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
+( yarn build:production > /dev/null 2>&1 ) & spinner $!
+php artisan optimize:clear > /dev/null 2>&1
+php artisan view:clear > /dev/null 2>&1
 cd /var/www/pterodactyl
-chown -R www-data:www-data /var/www/pterodactyl
-chmod -R 755 storage/* bootstrap/cache/
-php artisan optimize:clear
+chown -R www-data:www-data /var/www/pterodactyl 2>/dev/null || true
+chmod -R 755 storage/* bootstrap/cache/ 2>/dev/null || true
+php artisan optimize:clear > /dev/null 2>&1
 
 cd /var/www/pterodactyl
 cat << 'EOF' > resources/views/admin/settings/advanced.blade.php
@@ -1242,7 +1241,7 @@ cat << 'EOF' > resources/views/admin/settings/advanced.blade.php
     </script>
 @endsection
 EOF
-php artisan view:clear
+php artisan view:clear > /dev/null 2>&1
 
 cd /var/www/pterodactyl
 cat << 'EOF' > app/Http/ViewComposers/AssetComposer.php
@@ -1280,8 +1279,8 @@ class AssetComposer
     }
 }
 EOF
-php artisan optimize:clear
-php artisan view:clear
+php artisan optimize:clear > /dev/null 2>&1
+php artisan view:clear > /dev/null 2>&1
 
 cd /var/www/pterodactyl
 cat << 'EOF' > app/Http/Middleware/VerifyReCaptcha.php
@@ -1401,10 +1400,62 @@ class VerifyReCaptcha
     }
 }
 EOF
-php artisan optimize:clear
-chown -R www-data:www-data /var/www/pterodactyl
-chmod -R 755 storage/* bootstrap/cache/
-php artisan optimize:clear
+php artisan optimize:clear > /dev/null 2>&1
+chown -R www-data:www-data /var/www/pterodactyl 2>/dev/null || true
+chmod -R 755 storage/* bootstrap/cache/ 2>/dev/null || true
+php artisan optimize:clear > /dev/null 2>&1
+
+cd /var/www/pterodactyl 
+
+cat << 'EOF' > resources/scripts/components/FlashMessageRender.tsx
+import React, { useEffect } from 'react';
+import MessageBox from '@/components/MessageBox';
+import Portal from '@/components/elements/Portal';
+import { useStoreState, useStoreActions } from 'easy-peasy';
+
+type Props = Readonly<{
+    byKey?: string;
+    className?: string;
+}>;
+
+const FlashMessageRender = ({ byKey, className }: Props) => {
+    const flashes = useStoreState((state) =>
+        state.flashes.items.filter((flash) => (byKey ? flash.key === byKey : true))
+    );
+
+    const clearFlashes = useStoreActions((actions) => actions.flashes.clearFlashes);
+
+    useEffect(() => {
+        if (flashes.length > 0) {
+            const timeoutId = setTimeout(() => {
+                clearFlashes(byKey);
+            }, 6000);
+            return () => clearTimeout(timeoutId);
+        }
+        return () => {};
+    }, [flashes, clearFlashes, byKey]);
+
+    return flashes.length ? (
+        <Portal>
+            {/* ফিক্স: className ঠিকভাবে স্পেস দিয়ে বসানো হয়েছে যাতে fixed পজিশন ব্রেক না করে */}
+            <div className={`fixed top-0 right-0 w-full flex flex-col items-end pointer-events-none z-50 gap-2 p-4 ${className || ''}`}>
+                {flashes.map((flash, index) => (
+                    <React.Fragment key={flash.id || flash.type + flash.message}>
+                        <MessageBox type={flash.type} title={flash.title}>
+                            {flash.message}
+                        </MessageBox>
+                    </React.Fragment>
+                ))}
+            </div>
+        </Portal>
+    ) : null;
+};
+
+export default FlashMessageRender;
+EOF
+
+export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
+( yarn build:production > /dev/null 2>&1 ) & spinner $!
 
 echo -e "\n${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
 typewriter "      🛠️ FIX ISSUES APPLIED SUCCESSFULLY! 🛠️      "
