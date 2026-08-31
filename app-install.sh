@@ -459,6 +459,17 @@ EOF
             find /var/www/pterodactyl -type f -exec chmod 644 {} \;
             chmod -R 775 storage/* bootstrap/cache/
             chown -R www-data:www-data /var/www/pterodactyl/*
+            grep -rl "2.1.[0-9]" resources/ config/ app/ 2>/dev/null | xargs sed -i 's/2.1.[0-9]/2.1.2/g'
+php artisan view:clear
+php artisan optimize:clear
+cd /var/www/pterodactyl
+sed -i "s/'version' => '[0-9.]*'/'version' => '1.15.1'/g" config/app.php
+php artisan config:clear
+php artisan optimize:clear
+cd /var/www/pterodactyl
+yarn add xterm-addon-unicode11
+yarn build
+cd
         ) & spinner $! 
 
         echo -e "\n${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
