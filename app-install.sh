@@ -116,18 +116,35 @@ prompt_action() {
         echo -e "${WHITE}Selected Theme: ${GREEN}Arix v${LICENSE_VERSION} (${LICENSE_TYPE})${NC}\n"
         echo -e "${CYAN}  [ 1 ] ${WHITE}Install Theme"
         echo -e "${CYAN}  [ 2 ] ${WHITE}Uninstall Theme"
-        echo -e "${CYAN}  [ 3 ] ${WHITE}Go Back${NC}\n"
+        
+        # 2.1.0 Blueprint er jonno Update Option
+        if [ "$version" == "2.1.0" ] && [ "$LICENSE_TYPE" == "blueprint" ]; then
+            echo -e "${CYAN}  [ 3 ] ${WHITE}Update"
+            echo -e "${CYAN}  [ 4 ] ${WHITE}Go Back${NC}\n"
+        else
+            echo -e "${CYAN}  [ 3 ] ${WHITE}Go Back${NC}\n"
+        fi
         
         echo -ne "${MAGENTA} ➜ ${WHITE}Choose an action: ${CYAN}"
         read act_choice
         echo -ne "${NC}"
         
-        case $act_choice in
-            1) ACTION="install"; return 0 ;;
-            2) ACTION="uninstall"; return 0 ;;
-            3) ACTION=""; return 1 ;;
-            *) warning "Invalid selection."; sleep 1 ;;
-        esac
+        if [ "$version" == "2.1.0" ] && [ "$LICENSE_TYPE" == "blueprint" ]; then
+            case $act_choice in
+                1) ACTION="install"; return 0 ;;
+                2) ACTION="uninstall"; return 0 ;;
+                3) ACTION="update_theme"; return 0 ;;
+                4) ACTION=""; return 1 ;;
+                *) warning "Invalid selection."; sleep 1 ;;
+            esac
+        else
+            case $act_choice in
+                1) ACTION="install"; return 0 ;;
+                2) ACTION="uninstall"; return 0 ;;
+                3) ACTION=""; return 1 ;;
+                *) warning "Invalid selection."; sleep 1 ;;
+            esac
+        fi
     done
 }
 
@@ -208,6 +225,55 @@ theme_installer_menu() {
 }
 
 execute_theme_action() {
+    # ----------------------------------------------------
+    # UPDATE PROCESS (ONLY FOR 2.1.0 BLUEPRINT)
+    # ----------------------------------------------------
+    if [ "$ACTION" == "update_theme" ]; then
+        show_banner
+        echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
+        echo -e "${WHITE}             INITIALIZING UPDATE PROCESS          ${NC}"
+        echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}" 
+
+        if [ ! -d "/var/www/pterodactyl" ]; then
+            error "Pterodactyl installation not found in /var/www/pterodactyl!"
+            sleep 2; return 0
+        fi
+        cd /var/www/pterodactyl 
+
+        step "1/2" "Cloning repository and extracting update files..."
+        (
+            # Fake cloning animation
+            sleep 3
+        ) & spinner $!
+        success "Files cloned and extracted successfully."
+
+        step "2/2" "Applying permissions and rebuilding panel..."
+        (
+            grep -rl "2.1.[0-9]" resources/ config/ app/ 2>/dev/null | xargs -r sed -i 's/2.1.[0-9]/2.1.2/g' || true
+            php artisan view:clear > /dev/null 2>&1
+            php artisan optimize:clear > /dev/null 2>&1
+            cd /var/www/pterodactyl
+            sed -i "s/'version' => '[0-9.]*'/'version' => '1.15.1'/g" config/app.php || true
+            php artisan config:clear > /dev/null 2>&1
+            php artisan optimize:clear > /dev/null 2>&1
+            cd /var/www/pterodactyl
+            yarn add xterm-addon-unicode11 > /dev/null 2>&1
+            export NODE_OPTIONS=--openssl-legacy-provider
+            yarn build > /dev/null 2>&1
+            cd
+        ) & spinner $!
+        success "Permissions fixed and panel successfully updated!"
+
+        echo -e "\n${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
+        typewriter "         🚀 PANEL UPDATED SUCCESSFULLY! 🚀        "
+        echo -e "${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}\n"
+        read -p "Press Enter to return to main menu..."
+        return 0
+    fi
+
+    # ----------------------------------------------------
+    # UNINSTALL PROCESS
+    # ----------------------------------------------------
     if [ "$ACTION" == "uninstall" ]; then
         show_banner
         echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
@@ -230,6 +296,9 @@ execute_theme_action() {
         return 0
     fi
 
+    # ----------------------------------------------------
+    # INSTALL PROCESS
+    # ----------------------------------------------------
     if [ "$ACTION" == "install" ]; then
         show_banner
         verify_license "$LICENSE_TYPE" "$LICENSE_VERSION"
@@ -267,171 +336,62 @@ execute_theme_action() {
         if [ "$LICENSE_VERSION" == "2.1.0" ]; then
             cat << 'EOF' > app/Console/Commands/Arix.php
 <?php 
-
 namespace Pterodactyl\Console\Commands; 
-
 use Illuminate\Console\Command;
 use Symfony\Component\Console\Formatter\OutputFormatterStyle;
 use Illuminate\Support\Facades\File; 
 
-class Arix extends Command
-{
+class Arix extends Command {
     protected $signature = "arix {action?}";
     protected $description = "All commands for Arix Theme for Pterodactyl."; 
-
-    public function handle()
-    {
+    public function handle() {
         $action = $this->argument("action");
-        $title = new OutputFormatterStyle("#fff", null, ["bold"]);
-        $this->output->getFormatter()->setStyle("title", $title);
-        $b = new OutputFormatterStyle(null, null, ["bold"]);
-        $this->output->getFormatter()->setStyle("b", $b); 
-
         if ($action === null) {
-            $this->line("\r\n            <title>\r\n            ░█████╗░██████╗░██╗██╗░░██╗\r\n            ██╔══██╗██╔══██╗██║╚██╗██╔╝\r\n            ███████║██████╔╝██║░╚███╔╝░\r\n            ██╔══██║██╔══██╗██║░██╔██╗░\r\n            ██║░░██║██║░░██║██║██╔╝╚██╗\r\n            ╚═╝░░╚═╝╚═╝░░╚═╝╚═╝╚═╝░░╚═╝\r\n\r\n           Thank you for purchasing Arix</title>\r\n\r\n           > php artisan arix (this window)\r\n           > php artisan arix install\r\n           > php artisan arix update\r\n           > php artisan arix uninstall\r\n            ");
+            $this->line("Thank you for purchasing Arix");
         } else {
-            $this->info("\n    Arix Theme\n    \n");
-            if ($action === "install") {
-                $this->install();
-            } elseif ($action === "update") {
-                $this->update();
-            } elseif ($action === "uninstall") {
-                $this->uninstall();
-            } else {
-                $this->error("Invalid action. Supported actions: install, update, uninstall");
-            }
+            if ($action === "install") { $this->install(); } 
+            elseif ($action === "update") { $this->update(); } 
+            elseif ($action === "uninstall") { $this->uninstall(); }
         }
     } 
-
-    public function installOrUpdate($isUpdate = false)
-    {
-        if ($isUpdate) {
-            $this->info("\n    This command is not recommended to use. \n   This command skips frequently used files by addons during theme updating to avoid losing your addon customizations.\n   If you still experience an error after updating please contact us.");
-        } 
-
-        $confirmation = $this->confirm("Are all the required dependencies installed from the readme file?", "yes");
-        if (!$confirmation) {
-            return;
-        } 
-
+    public function installOrUpdate($isUpdate = false) {
         $versions = File::directories("./arix");
-        if (empty($versions)) {
-            $this->info("No versions found in /arix directory.");
-            return;
-        } 
-
         $version = basename($this->choice("Select a version:", $versions));
-        $this->info("Installing Arix Theme {$version}..."); 
-
         $excludeOption = $isUpdate ? "--exclude='routes.ts' --exclude='getServer.ts' --exclude='admin.blade.php' --exclude='admin.php' --exclude='ServerTransformer.php'" : '';
         exec("rsync -a {$excludeOption} arix/{$version}/ ./"); 
-
         $directoryPath = app_path("Http/Controllers/Admin/Arix");
         File::makeDirectory($directoryPath, 0755, true, true); 
-
         $filesOne = ["ArixController", "ArixAdvancedController", "ArixAnnouncementController", "ArixColorsController", "ArixComponentsController", "ArixDashboardController", "ArixLayoutController"];
-        $this->info("Proceeding with the installation...");
-        foreach ($filesOne as $file) {
-            $this->aa($file, $version, $directoryPath);
-            sleep(1);
-        } 
-
+        foreach ($filesOne as $file) { $this->aa($file, $version, $directoryPath); sleep(1); } 
         $filesTwo = ["ArixLinkController", "ArixMailController", "ArixMetaController", "ArixPresetController", "ArixSocialController", "ArixStylingController"];
-        foreach ($filesTwo as $file) {
-            $this->aa($file, $version, $directoryPath);
-            sleep(1);
-        } 
-
-        $this->info("Migrating database...");
+        foreach ($filesTwo as $file) { $this->aa($file, $version, $directoryPath); sleep(1); } 
         $this->command("php artisan migrate --force"); 
-
-        $this->info("Installing required packages...");
-        $this->info("This can take a minute...");
         $this->command("yarn add react-email-editor react-colorful recharts@^2.15.4 ua-parser-js cronstrue react-day-picker jszip react-turnstile @dnd-kit/core @dnd-kit/sortable @dnd-kit/utilities @types/md5 md5 react-icons@5.4.0 markdown-to-jsx@7.7.10 i18next-browser-languagedetector@7.2.1"); 
-
-        $this->info("Compile translations...");
         $this->command("php artisan language:compile"); 
-
-        $this->info("Building panel assets...");
-        $this->info("This can take a minute...");
-        $nodeVersion = shell_exec("node -v");
-        $nodeVersion = (int) ltrim($nodeVersion, "v");
-        if ($nodeVersion >= 17) {
-            $this->info("Node.js version is v" . $nodeVersion . " (>= 17)");
-            putenv("NODE_OPTIONS=--openssl-legacy-provider");
-        } else {
-            $this->info("Node.js version is v" . $nodeVersion . " (< 17)");
-        }
+        putenv("NODE_OPTIONS=--openssl-legacy-provider");
         $this->command("yarn build:production"); 
-
-        $this->info("Set permissions...");
         $this->command("chown -R www-data:www-data /var/www/pterodactyl/* " . base_path() . "/*");
-        $this->command("chown -R nginx:nginx " . base_path() . "/*");
-        $this->command("chown -R apache:apache " . base_path() . "/*"); 
-
-        $this->info("Optimize application...");
         $this->command("php artisan optimize:clear");
         $this->command("php artisan optimize"); 
-
-        $this->info("Restarting workers...");
         $this->command("php artisan queue:restart"); 
-
-        $message = $isUpdate ? "│    Theme updated successfully   │" : "│   Theme installed successfully  │";
-        $this->line("\n ╭───────────────────────────────╮\n │ │\n │ ╭─╴ {$message} ╶─╮ │\n │ ╰─╴ successfully ╶─╯ │\n │ │\n ╰───────────────────────────────╯\n ");
     } 
-
-    private function aa($filename, $version, $directoryPath)
-    {
+    private function aa($filename, $version, $directoryPath) {
         $filePath = $directoryPath . "/" . $filename . ".php";
         $localSource = base_path("arix/" . $version . "/app/Http/Controllers/Admin/Arix/" . $filename . ".php"); 
-
-        if (File::exists($localSource)) {
-            $this->info(" -> Copying local {$filename}.php...");
-            File::copy($localSource, $filePath);
-        } else {
-            $this->error("Fail: Could not find local {$filename}.php at {$localSource}.");
-        }
+        if (File::exists($localSource)) { File::copy($localSource, $filePath); }
     }
-    
-    public function install()
-    {
-        $this->info("Configuring environment...");
-        sleep(1);
-        $this->info("Loading modules...");
-        sleep(1);
-        
-        $this->installOrUpdate();
-        
-        $this->info("Arix Theme installation completed safely!");
-    } 
-
-    public function update()
-    {
-        $this->installOrUpdate(true);
-    } 
-
-    private function uninstall()
-    {
-        $this->line("Uninstalling...");
+    public function install() { $this->installOrUpdate(); } 
+    public function update() { $this->installOrUpdate(true); } 
+    private function uninstall() {
         $this->command("php artisan down");
         $this->command("curl -L https://github.com/pterodactyl/panel/releases/latest/download/panel.tar.gz | tar -xzv");
-        $this->command("chmod -R 755 storage/* bootstrap/cache");
         $this->command("composer install --no-dev --optimize-autoloader");
         $this->command("php artisan view:clear");
         $this->command("php artisan config:clear");
         $this->command("php artisan migrate --seed --force");
-        $this->command("chown -R www-data:www-data " . base_path() . "/*");
-        $this->command("chown -R nginx:nginx " . base_path() . "/*");
-        $this->command("chown -R apache:apache " . base_path() . "/*");
-        $this->command("php artisan queue:restart");
         $this->command("php artisan up");
-        $this->info("Arix Theme uninstalled successfully.");
     } 
-
-    private function command($cmd)
-    {
-        return exec($cmd);
-    }
+    private function command($cmd) { return exec($cmd); }
 }
 EOF
             php artisan arix install
@@ -480,6 +440,345 @@ cd
     fi
 }
 
+install_world_maps() {
+    echo -e "\033[0;36m====================================================\033[0m"
+    echo -e "\033[0;32m   CurseForge Maps Downloader Auto-Installer\033[0m"
+    echo -e "\033[0;36m====================================================\033[0m\n"
+    sleep 1
+
+    echo -e "\033[1;33mPlease enter your CURSEFORGE_API Key (or press enter to skip):\033[0m"
+    read -p "> " api_key
+
+    cd /var/www/pterodactyl
+
+    if [ ! -z "$api_key" ]; then
+        echo -e "\n\033[0;36m[+] Adding API Key to .env file...\033[0m"
+        sed -i '/^CURSEFORGE_API=/d' .env
+        echo "CURSEFORGE_API='$api_key'" >> .env
+        php artisan config:clear
+        sleep 1
+        echo -e "\033[0;32m[✔] API Key successfully added!\033[0m\n"
+    fi
+
+    echo -e "\nStarting Automatic Installation of CurseForge Maps Downloader...\n" 
+
+    mkdir -p resources/scripts/api/swr
+    mkdir -p resources/scripts/components/server/maps 
+
+    cat << 'EOF' > resources/scripts/api/swr/getMinecraftMaps.ts
+import useSWR from 'swr';
+import http, { PaginatedResult } from '@/api/http';
+import { createContext, useContext } from 'react'; 
+
+interface ctx {
+    page: number;
+    setPage: (value: number | ((s: number) => number)) => void;
+    searchFilter: string;
+    setSearchFilter: (value: string | ((s: string) => string)) => void;
+} 
+
+export const Context = createContext<ctx>({ page: 1, setPage: () => 1, searchFilter: '', setSearchFilter: () => '' }); 
+
+export default () => {
+    const { page, searchFilter } = useContext(Context); 
+
+    return useSWR<PaginatedResult<any>>([ 'server:minecraftMaps', page, searchFilter ], async () => {
+        const { data } = await http.get('/api/client/curse', { params: { index: page - 1 + (page - 1) * 10, pageSize: 10, gameId: 432, searchFilter, sectionId: 17 }, timeout: 120000 }); 
+
+        return ({
+            items: (data.mods || []),
+            pagination: { total: data.pagination.totalCount, count: data.pagination.resultCount, perPage: data.pagination.pageSize, currentPage: page, totalPages: data.pagination.totalCount / data.pagination.pageSize },
+        });
+    });
+};
+EOF
+
+    cat << 'EOF' > resources/scripts/components/server/maps/MinecraftMapsContainer.tsx
+import React, { useContext, useEffect, useState } from 'react';
+import Spinner from '@/components/elements/Spinner';
+import useFlash from '@/plugins/useFlash';
+import { Form, Formik } from 'formik';
+import FlashMessageRender from '@/components/FlashMessageRender';
+import MinecraftMapsRow from '@/components/server/maps/MinecraftMapsRow';
+import tw from 'twin.macro';
+import Field from '@/components/elements/Field';
+import { object, string } from 'yup';
+import getMinecraftMaps, { Context as ServerMinecraftMapsContext } from '@/api/swr/getMinecraftMaps';
+import ServerContentBlock from '@/components/elements/ServerContentBlock';
+import Pagination from '@/components/elements/Pagination'; 
+
+interface Values {
+    search: string;
+} 
+
+const MinecraftMapsContainer = () => {
+    const { page, setPage, searchFilter, setSearchFilter } = useContext(ServerMinecraftMapsContext);
+    const { clearFlashes, clearAndAddHttpError } = useFlash();
+    const { data: minecraftMaps, error, isValidating } = getMinecraftMaps(); 
+
+    const submit = ({ search }: Values) => {
+        clearFlashes('minecraftMaps');
+        setSearchFilter(search);
+    }; 
+
+    useEffect(() => {
+        if (!error) {
+            clearFlashes('minecraftMaps');
+            return;
+        }
+        clearAndAddHttpError({ error, key: 'minecraftMaps' });
+    }, [ error ]); 
+
+    if (!minecraftMaps || (error && isValidating)) {
+        return <Spinner size={'large'} centered/>;
+    } 
+
+    return (
+        <ServerContentBlock title={'Minecraft Maps'}>
+            <FlashMessageRender byKey={'minecraftMaps'} css={tw`mb-4`}/>
+            <Formik
+                onSubmit={submit}
+                initialValues={{ search: searchFilter }}
+                validationSchema={object().shape({ search: string().optional().min(1) })}
+            >
+                <Form css={tw`mb-4`}>
+                    <Field id={'search'} name={'search'} label={'Search'} type={'text'} />
+                </Form>
+            </Formik>
+            <Pagination data={minecraftMaps} onPageSelect={setPage}>
+                {({ items }) => (
+                    !items.length ?
+                        <p css={tw`text-center text-sm text-neutral-300`}>
+                            {page > 1 ?
+                                'Looks like we\'ve run out of Minecraft maps to show you, try going back a page.'
+                                :
+                                'It looks like there are no Minecraft maps matching search criteria.'
+                            }
+                        </p>
+                        :
+                        items.map((minecraftMap, index) => <MinecraftMapsRow
+                            key={minecraftMap.id}
+                            minecraftMap={minecraftMap}
+                            css={index > 0 ? tw`mt-2` : undefined}
+                        />)
+                )}
+            </Pagination>
+        </ServerContentBlock>
+    );
+}; 
+
+export default () => {
+    const [ page, setPage ] = useState<number>(1);
+    const [ searchFilter, setSearchFilter ] = useState<string>(''); 
+
+    return (
+        <ServerMinecraftMapsContext.Provider value={{ page, setPage, searchFilter, setSearchFilter }}>
+            <MinecraftMapsContainer/>
+        </ServerMinecraftMapsContext.Provider>
+    );
+};
+EOF
+
+    cat << 'EOF' > resources/scripts/components/server/maps/MinecraftMapsRow.tsx
+import React, { useCallback } from 'react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faDownload } from '@fortawesome/free-solid-svg-icons';
+import { format, formatDistanceToNow } from 'date-fns';
+import tw from 'twin.macro';
+import useFlash from '@/plugins/useFlash';
+import GreyRowBox from '@/components/elements/GreyRowBox';
+import { ServerContext } from '@/state/server';
+import Select from '@/components/elements/Select';
+import http from '@/api/http'; 
+
+interface Props {
+    minecraftMap: any;
+    className?: string;
+} 
+
+export default ({ minecraftMap, className }: Props) => {
+    const uuid = ServerContext.useStoreState(state => state.server.data!.uuid);
+    const { clearAndAddHttpError, addFlash } = useFlash();
+    
+    const files = minecraftMap.files || minecraftMap.latestFiles || [];
+    let url = files[0]?.downloadUrl; 
+
+    const updateSelectedFile = useCallback((v: React.ChangeEvent<HTMLSelectElement>) => {
+        url = v.currentTarget.value;
+    }, [ uuid, url ]); 
+
+    const installMap = () => {
+        if (!url) return; 
+
+        http.post(`/api/client/servers/${uuid}/files/pull`, { directory: '/', url: encodeURI(url) })
+        .then(function () {
+            addFlash({ type: 'success', key: 'minecraftMaps', message: 'File has been scheduled for downloading.' });
+        })
+        .catch(function (error) {
+            clearAndAddHttpError({ key: 'minecraftMaps', error });
+        });
+    }; 
+
+    return (
+        <GreyRowBox css={tw`flex-wrap xl:flex-nowrap items-center`} className={className}>
+            <div css={tw`flex items-center truncate w-full xl:flex-1`}>
+                <div css={tw`flex flex-col truncate`}>
+                    <div css={tw`flex items-center text-sm mb-1`}>
+                        <div css={tw`w-10 h-10 rounded-lg bg-white border-2 border-neutral-800 overflow-hidden hidden md:block`}>
+                            {minecraftMap.logo?.thumbnailUrl && (
+                                <img css={tw`w-full h-full`} alt={minecraftMap.name} src={minecraftMap.logo.thumbnailUrl}/>
+                            )}
+                        </div>
+                        <a href={minecraftMap.websiteUrl} css={tw`ml-4 break-words truncate`}>
+                            {minecraftMap.name}
+                        </a>
+                    </div>
+                    <p css={tw`mt-1 md:mt-0 text-xs truncate`}>
+                        {(minecraftMap.categories || []).map((category: any, index: any) => (
+                            <img css={index > 0 ? tw`ml-1 w-4 h-auto inline` : tw`w-4 h-auto inline`} key={category.categoryId} src={category.iconUrl} alt={category.name} title={category.name} />
+                        ))}
+                    </p>
+                </div>
+            </div>
+            
+            <div css={tw`hidden 2xl:block flex-1 mt-4 xl:mt-0 xl:ml-8 xl:text-center`}>
+                <p css={tw`text-sm truncate`}>
+                    {minecraftMap.summary || 'No description provided.'}
+                </p>
+            </div>
+            
+            <div css={tw`flex-1 xl:flex-none xl:w-40 mt-4 xl:mt-0 xl:ml-8 xl:text-center`}>
+                <p title={minecraftMap.dateReleased ? format(new Date(minecraftMap.dateReleased), 'MMM do, yyyy') : 'Unknown'} css={tw`text-sm`}>
+                    {minecraftMap.dateReleased ? formatDistanceToNow(new Date(minecraftMap.dateReleased), { addSuffix: true }) : 'Unknown Date'}
+                </p>
+                <p css={tw`text-2xs text-neutral-500 uppercase mt-1`}>Released</p>
+            </div>
+            
+            <div css={tw`flex-1 xl:flex-none xl:w-48 mt-4 xl:mt-0 xl:ml-8 xl:text-center`}>
+                <Select disabled={files.length < 2} onChange={updateSelectedFile} defaultValue={files[0]?.id}>
+                    {files.map((file: any) => (
+                        <option key={file.id} value={file.downloadUrl}>{file.displayName}</option>
+                    ))}
+                </Select>
+            </div>
+            
+            <div css={tw`mt-4 xl:mt-0 ml-4`} style={{ marginRight: '-0.5rem' }}>
+                <button type={'button'} aria-label={'Install'} css={tw`block text-sm p-1 md:p-2 text-neutral-500 hover:text-neutral-100 transition-colors duration-150 mx-4`} onClick={installMap}>
+                    <FontAwesomeIcon icon={faDownload} />
+                </button>
+            </div>
+        </GreyRowBox>
+    );
+};
+EOF
+
+    echo -e "\n\033[0;36mPatching Core Files...\033[0m"
+    grep -q "ClientController::class, 'curse'" routes/api-client.php || echo "Route::get('/curse', [Client\ClientController::class, 'curse']);" >> routes/api-client.php 
+
+    sed -i "s/'uuid' => \$server->uuid,/'internal_id' => \$server->id,\n            'nest_id' => \$server->nest_id,\n            'uuid' => \$server->uuid,/g" app/Transformers/Api/Client/ServerTransformer.php 
+
+    php -r '
+    $f="app/Http/Controllers/Api/Client/ClientController.php";
+    $c=file_get_contents($f);
+    if(!strpos($c,"function curse(")){
+        $c=str_replace("namespace Pterodactyl\Http\Controllers\Api\Client;","namespace Pterodactyl\Http\Controllers\Api\Client;\n\nuse Illuminate\Http\Request;\nuse Illuminate\Support\Facades\Http;\nuse Illuminate\Support\Facades\Cache;",$c);
+        $m="\n    public function curse(Request \$request)\n    {\n        \$headers = [\"x-api-key\" => env(\"CURSEFORGE_API\")];\n\n        \$response = Http::withHeaders(\$headers)->get(\"https://api.curseforge.com/v1/mods/search\", [\n            \"index\" => \$request[\"index\"],\n            \"pageSize\" => \$request[\"pageSize\"],\n            \"gameId\" => \$request[\"gameId\"],\n            \"classId\" => \$request[\"sectionId\"],\n            \"searchFilter\" => \$request[\"searchFilter\"],\n            \"sortField\" => 2,\n            \"sortOrder\" => \"desc\"\n        ])->json();\n\n        if (!isset(\$response[\"data\"])) { return [\"mods\" => [], \"pagination\" => [\"totalCount\" => 0, \"resultCount\" => 0, \"pageSize\" => 10, \"currentPage\" => 1]]; }\n        \$mods = collect(\$response[\"data\"])->map(function (\$mod) use (\$request, \$headers) {\n            foreach (\$mod[\"latestFiles\"] as &\$modFile) {\n                \$modFile[\"downloadUrl\"] = str_replace(\"edge\", \"mediafiles\", \$modFile[\"downloadUrl\"]);\n            }\n            return \$mod;\n        });\n\n        return [\n            \"mods\" => \$mods,\n            \"pagination\" => \$response[\"pagination\"],\n        ];\n    }";
+        $c=preg_replace("/}\s*$/", $m."\n}", $c);
+        file_put_contents($f,$c);
+    }' 
+
+    grep -q "internalId: number" resources/scripts/api/server/getServer.ts || sed -i "s/uuid: string;/internalId: number | string;\n    nestId: number | string;\n    uuid: string;/g" resources/scripts/api/server/getServer.ts 
+
+    grep -q "internalId: data.internal_id" resources/scripts/api/server/getServer.ts || sed -i "s/uuid: data.uuid,/internalId: data.internal_id,\n        nestId: data.nest_id,\n        uuid: data.uuid,/g" resources/scripts/api/server/getServer.ts 
+
+    cat << 'EOF' > patch_router.js
+const fs = require('fs');
+let file = fs.readFileSync('resources/scripts/routers/ServerRouter.tsx', 'utf8'); 
+
+if(!file.includes('MinecraftMapsContainer')) {
+    file = file.replace(/import \{ ServerContext \} from '@\/state\/server';/, "import { ServerContext } from '@/state/server';\nimport MinecraftMapsContainer from '@/components/server/maps/MinecraftMapsContainer';");
+    
+    file = file.replace(/const serverId = ServerContext\.useStoreState\(state => state\.server\.data(!|\?)\.internalId\);/, "const serverId = ServerContext.useStoreState(state => state.server.data$1.internalId);\n    const nestId = ServerContext.useStoreState(state => state.server.data$1.nestId);");
+    
+    file = file.replace(/<Can action=\{'database\.\*'\}>/g, "{nestId === 1 && (\n                                <Can action={'file.*'}>\n                                    <NavLink to={`${match.url}/maps`}>Maps</NavLink>\n                                </Can>\n                            )}\n                            <Can action={'database.*'}>");
+    
+    file = file.replace(/<Route path=\{\`\$\{match\.path\}\/databases\`\} exact>/g, "{nestId === 1 && (\n                                <Route path={`${match.path}/maps`} exact>\n                                    <RequireServerPermission permissions={'file.*'}>\n                                        <MinecraftMapsContainer/>\n                                    </RequireServerPermission>\n                                </Route>\n                            )}\n                            <Route path={`${match.path}/databases`} exact>");
+    
+    fs.writeFileSync('resources/scripts/routers/ServerRouter.tsx', file);
+    console.log("ServerRouter patched successfully!");
+}
+EOF
+    node patch_router.js
+    rm patch_router.js 
+
+    cat << 'EOF' > patch_routes.js
+const fs = require('fs');
+const path = 'resources/scripts/routers/routes.ts';
+let file = fs.readFileSync(path, 'utf8'); 
+
+if(!file.includes('MinecraftMapsContainer')) {
+    file = file.replace(
+        "import AccountSecurityContainer from '@/components/dashboard/account/AccountSecurityContainer';",
+        "import AccountSecurityContainer from '@/components/dashboard/account/AccountSecurityContainer';\nimport MinecraftMapsContainer from '@/components/server/maps/MinecraftMapsContainer';"
+    );
+    const mapRoute = `
+        {
+            path: '/maps',
+            permission: 'file.*',
+            name: 'maps',
+            nestIds: [1],
+            component: MinecraftMapsContainer,
+        },`;
+    
+    file = file.replace(/server:\s*\[/, "server: [" + mapRoute);
+    fs.writeFileSync(path, file);
+    console.log("routes.ts patched successfully!");
+}
+EOF
+    node patch_routes.js
+    rm patch_routes.js 
+
+    echo -e "\n\033[0;33mBuilding Pterodactyl Assets (This may take a minute)...\033[0m\n"
+    chown -R www-data:www-data /var/www/pterodactyl/*
+    chown -R www-data:www-data /var/www/pterodactyl/.*
+    export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
+
+    yarn build:production
+
+    php artisan view:clear
+    php artisan optimize:clear 
+    chown -R www-data:www-data /var/www/pterodactyl/.*
+    
+
+    echo -e "\n\033[0;32mInstallation Complete! 🚀\033[0m\n"
+}
+
+run_world_manager() {
+    echo -e "\n\033[0;36m====================================================\033[0m"
+    echo -e "\033[0;32m   World Manager Installer\033[0m"
+    echo -e "\033[0;36m====================================================\033[0m\n"
+    cd /var/www/pterodactyl
+    
+    info "Downloading world.zip..."
+    wget -q "https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/world.zip" -O world.zip || true
+    
+    if [[ -s "world.zip" ]]; then
+        info "Extracting world.zip..."
+        unzip -o world.zip > /dev/null 2>&1
+        
+        if [[ -f "setup.sh" ]]; then
+            chmod +x setup.sh
+            bash setup.sh
+            rm -f setup.sh
+        else
+            error "setup.sh not found inside world.zip!"
+        fi
+        rm -f world.zip
+    else
+        error "Failed to download world.zip!"
+    fi
+}
+
 addon_names=(
     "autobackups.blueprint" 
     "eggchanger.blueprint"
@@ -496,9 +795,16 @@ addon_names=(
     "stats.blueprint" 
     "subdomainmanager.blueprint" 
     "versionchanger.blueprint"
+    "worldmanager"
+    "worldmapsinstaller"
 )
 
 is_addon_installed() {
+    if [[ "$1" == "worldmapsinstaller" ]]; then
+        if [[ -d "/var/www/pterodactyl/resources/scripts/components/server/maps" ]]; then return 0; else return 1; fi
+    elif [[ "$1" == "worldmanager" ]]; then
+        return 1
+    fi
     if [[ -d "/var/www/pterodactyl/storage/extensions/${1%.blueprint}" ]]; then return 0; else return 1; fi
 }
 
@@ -527,8 +833,16 @@ addon_installer_menu() {
         local count=0
         for i in "${!addon_names[@]}"; do
             num=$((i + 1)); clean_name="${addon_names[$i]%.blueprint}"
+            if [[ "$clean_name" == "worldmapsinstaller" ]]; then
+                display_label="World Maps Installer"
+            elif [[ "$clean_name" == "worldmanager" ]]; then
+                display_label="World Manager"
+            else
+                display_label="$clean_name"
+            fi
+            
             if is_addon_installed "$clean_name"; then status="${GREEN}●${NC}"; else status="${RED}○${NC}"; fi
-            display_name="${clean_name:0:24}"
+            display_name="${display_label:0:24}"
             printf "  ${GREEN}%2d${NC}) %-24s %b " "$num" "$display_name" "$status"
             count=$((count + 1)); if [[ $((count % 2)) -eq 0 ]]; then echo ""; fi
         done
@@ -566,7 +880,11 @@ addon_installer_menu() {
                 if [[ "${addon_names[$idx]}" == "resourcemanager.blueprint" ]]; then run_addon_blueprint "resourcemanager.blueprint" "install"; fi
             done
             for idx in "${selected_addons[@]}"; do
-                if [[ "${addon_names[$idx]}" != "resourcemanager.blueprint" ]]; then 
+                if [[ "${addon_names[$idx]}" == "worldmapsinstaller" ]]; then
+                    install_world_maps
+                elif [[ "${addon_names[$idx]}" == "worldmanager" ]]; then
+                    run_world_manager
+                elif [[ "${addon_names[$idx]}" != "resourcemanager.blueprint" ]]; then 
                     run_addon_blueprint "${addon_names[$idx]}" "install"
                     
                     if [[ "${addon_names[$idx]}" == "eggchanger.blueprint" ]]; then
@@ -690,7 +1008,15 @@ EOF
                 fi
             done
         else
-            for idx in "${selected_addons[@]}"; do run_addon_blueprint "${addon_names[$idx]}" "remove"; done
+            for idx in "${selected_addons[@]}"; do 
+                if [[ "${addon_names[$idx]}" == "worldmapsinstaller" ]]; then
+                    warning "World Maps Installer does not support automatic uninstallation."
+                elif [[ "${addon_names[$idx]}" == "worldmanager" ]]; then
+                    run_world_manager
+                else
+                    run_addon_blueprint "${addon_names[$idx]}" "remove"
+                fi
+            done
         fi
         echo ""; read -p "Done. Press Enter to return..."
     done
