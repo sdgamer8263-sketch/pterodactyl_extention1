@@ -685,3 +685,12 @@ rm fix_delete_final.php
 # ক্যাশ ক্লিয়ার করা হচ্ছে
 php artisan route:clear
 php artisan optimize:clear
+cd /var/www/pterodactyl
+
+chown -R www-data:www-data /var/www/pterodactyl/*
+
+chown -R www-data:www-data /var/www/pterodactyl/.*
+
+chmod -R 755 storage/* bootstrap/cache/
+
+php artisan optimize:clear
