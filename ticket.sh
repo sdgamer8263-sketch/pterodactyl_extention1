@@ -1,3 +1,5 @@
+#!/bin/bash
+
 cd /var/www/pterodactyl
 mkdir -p app/Http/Controllers/Admin
 mkdir -p app/Http/Controllers/Api/Client
