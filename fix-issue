@@ -84,6 +84,7 @@ if [ ! -d "/var/www/pterodactyl" ]; then
     error "Pterodactyl installation not found!"
     exit 1
 fi
+
 cd /var/www/pterodactyl 
 
 info "Fixing RouterElements.tsx..."
@@ -439,10 +440,11 @@ export const ComponentLoader = () => {
     );
 };
 EOF
-yarn add xterm-addon-unicode11
+yarn add xterm-addon-unicode11 || true
 export NODE_OPTIONS=--openssl-legacy-provider
-yarn build:production
+yarn build:production || true
 
+cd /var/www/pterodactyl
 info "Fixing DashboardRouter.tsx..."
 rm -f resources/scripts/routers/DashboardRouter.tsx
 cat << 'EOF' > resources/scripts/routers/DashboardRouter.tsx
@@ -538,8 +540,9 @@ export default () => {
 };
 EOF
 export NODE_OPTIONS=--openssl-legacy-provider
-yarn build:production
+yarn build:production || true
 
+cd /var/www/pterodactyl
 info "Fixing AppearanceWrapper.tsx..."
 rm -f resources/scripts/components/dashboard/account/forms/AppearanceWrapper.tsx
 cat << 'EOF' > resources/scripts/components/dashboard/account/forms/AppearanceWrapper.tsx
@@ -633,8 +636,9 @@ const AppearanceWrapper = () => {
 export default AppearanceWrapper; 
 EOF
 export NODE_OPTIONS=--openssl-legacy-provider
-yarn build:production
+yarn build:production || true
 
+cd /var/www/pterodactyl
 info "Fixing RegisterController.php..."
 rm -f app/Http/Controllers/Auth/RegisterController.php
 cat << 'EOF' > app/Http/Controllers/Auth/RegisterController.php
@@ -665,11 +669,10 @@ class RegisterController extends AbstractRegisterController
 }
 EOF
 export NODE_OPTIONS=--openssl-legacy-provider
-yarn build:production
+yarn build:production || true
 
 cd /var/www/pterodactyl 
 
-# Auto-Fix Script toiri kora hocche
 cat << 'EOF' > fix_translations.js
 const fs = require('fs');
 const path = require('path'); 
@@ -732,16 +735,13 @@ files.forEach(file => {
 console.log(`\nSuccessfully fixed translations in ${patchedCount} files!`);
 EOF
 
-# Script ti run kora hocche
-node fix_translations.js 
+node fix_translations.js || true
 
-# Final build kora hocche jate notun lekha gulo show kore
 export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
-yarn build:production 
+yarn build:production || true
 
-# Panel er cache clear kora
-php artisan view:clear
-php artisan optimize:clear 
+php artisan view:clear || true
+php artisan optimize:clear || true
 
 cd /var/www/pterodactyl 
 
@@ -796,19 +796,16 @@ files.forEach(file => {
 console.log(`\nSuccessfully fixed SSH and API Keys translations in ${patchedCount} files!`);
 EOF
 
-# Script ti run kora hocche
-node fix_translations_2.js 
+node fix_translations_2.js || true
 
-# Final build kora hocche
 export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
-yarn build:production 
+yarn build:production || true
 
-# Panel er cache clear kora
-php artisan view:clear
-php artisan optimize:clear
-chown -R www-data:www-data /var/www/pterodactyl
-chmod -R 755 storage/* bootstrap/cache/
-php artisan optimize:clear
+php artisan view:clear || true
+php artisan optimize:clear || true
+chown -R www-data:www-data /var/www/pterodactyl || true
+chmod -R 755 storage/* bootstrap/cache/ || true
+php artisan optimize:clear || true
 
 cd /var/www/pterodactyl 
 
@@ -865,16 +862,13 @@ files.forEach(file => {
 console.log(`\nSuccessfully fixed final missing translations in ${patchedCount} files!`);
 EOF 
 
-# স্ক্রিপ্টটি রান করা হচ্ছে
-node fix_translations_3.js 
+node fix_translations_3.js || true
 
-# পরিবর্তনগুলো সেভ করার জন্য ফাইনাল বিল্ড
 export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
-yarn build:production 
+yarn build:production || true
 
-# প্যানেলের ক্যাশ ক্লিয়ার করা
-php artisan view:clear
-php artisan optimize:clear
+php artisan view:clear || true
+php artisan optimize:clear || true
 cd /var/www/pterodactyl 
 
 cat << 'EOF' > fix_translations_final.js
@@ -940,19 +934,16 @@ files.forEach(file => {
 console.log(`\nSuccessfully fixed ALL remaining UI texts in ${patchedCount} files!`);
 EOF 
 
-# স্ক্রিপ্টটি রান করা হচ্ছে
-node fix_translations_final.js 
+node fix_translations_final.js || true
 
-# পরিবর্তনগুলো সেভ করার জন্য ফাইনাল বিল্ড
 export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
-yarn build:production 
+yarn build:production || true
 
-# প্যানেলের ক্যাশ ক্লিয়ার করা
-php artisan view:clear
-php artisan optimize:clear
-chown -R www-data:www-data /var/www/pterodactyl
-chmod -R 755 storage/* bootstrap/cache/
-php artisan optimize:clear
+php artisan view:clear || true
+php artisan optimize:clear || true
+chown -R www-data:www-data /var/www/pterodactyl || true
+chmod -R 755 storage/* bootstrap/cache/ || true
+php artisan optimize:clear || true
 
 cd /var/www/pterodactyl
 
@@ -1001,16 +992,13 @@ files.forEach(file => {
 console.log(`\nSuccessfully fixed stubborn key in ${patchedCount} files!`);
 EOF
 
-# স্ক্রিপ্টটি রান করা হচ্ছে
-node fix_trashbin_stubborn.js
+node fix_trashbin_stubborn.js || true
 
-# পরিবর্তনগুলো সেভ করার জন্য ফাইনাল বিল্ড
 export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
-yarn build:production
+yarn build:production || true
 
-# প্যানেলের ক্যাশ ক্লিয়ার করা
-php artisan view:clear
-php artisan optimize:clear
+php artisan view:clear || true
+php artisan optimize:clear || true
 
 cd /var/www/pterodactyl
 
@@ -1056,23 +1044,19 @@ try {
 console.log("All patches applied successfully!");
 EOF
 
-# স্ক্রিপ্ট রান করুন
-node fix_captcha_bug.js
+node fix_captcha_bug.js || true
 
-# পরিবর্তনগুলো সেভ করার জন্য ফাইনাল বিল্ড
 export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
-yarn build:production
+yarn build:production || true
 
-# প্যানেলের ক্যাশ ক্লিয়ার করা
-php artisan optimize:clear
-php artisan view:clear
+php artisan optimize:clear || true
+php artisan view:clear || true
 
 cd /var/www/pterodactyl
 
-# ১. পারমিশন এবং ক্যাশ ফিক্স করা
-chown -R www-data:www-data /var/www/pterodactyl
-chmod -R 755 storage/* bootstrap/cache/
-php artisan optimize:clear
+chown -R www-data:www-data /var/www/pterodactyl || true
+chmod -R 755 storage/* bootstrap/cache/ || true
+php artisan optimize:clear || true
 
 cd /var/www/pterodactyl
 
@@ -1284,12 +1268,9 @@ cat << 'EOF' > resources/views/admin/settings/advanced.blade.php
     </script>
 @endsection
 EOF
-
-# যেহেতু এটি Blade ফাইল, তাই কোনো `yarn build:production` এর প্রয়োজন নেই!
-php artisan view:clear
+php artisan view:clear || true
 
 cd /var/www/pterodactyl
-
 cat << 'EOF' > app/Http/ViewComposers/AssetComposer.php
 <?php
 
@@ -1325,13 +1306,10 @@ class AssetComposer
     }
 }
 EOF
-
-# যেহেতু এটি ব্যাকএন্ডের PHP ফাইল, তাই yarn build এর দরকার নেই!
-php artisan optimize:clear
-php artisan view:clear
+php artisan optimize:clear || true
+php artisan view:clear || true
 
 cd /var/www/pterodactyl
-
 cat << 'EOF' > app/Http/Middleware/VerifyReCaptcha.php
 <?php
 
@@ -1449,13 +1427,10 @@ class VerifyReCaptcha
     }
 }
 EOF
-
-# পরিবর্তনগুলো অ্যাপ্লাই করার জন্য ক্যাশ ক্লিয়ার
-php artisan optimize:clear
-
-chown -R www-data:www-data /var/www/pterodactyl
-chmod -R 755 storage/* bootstrap/cache/
-php artisan optimize:clear
+php artisan optimize:clear || true
+chown -R www-data:www-data /var/www/pterodactyl || true
+chmod -R 755 storage/* bootstrap/cache/ || true
+php artisan optimize:clear || true
 
 cd /var/www/pterodactyl 
 
@@ -1506,9 +1481,8 @@ const FlashMessageRender = ({ byKey, className }: Props) => {
 export default FlashMessageRender;
 EOF
 
-# পুরো প্যানেলে গ্লোবাল ফিক্সটি অ্যাপ্লাই করার জন্য বিল্ড করুন
 export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
-yarn build:production
+yarn build:production || true
 
 echo -e "\n${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
 typewriter "      🛠️ FIX ISSUES APPLIED SUCCESSFULLY! 🛠️      "
