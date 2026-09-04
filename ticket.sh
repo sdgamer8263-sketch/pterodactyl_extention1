@@ -658,3 +658,49 @@ yarn build:production
 php artisan route:clear
 php artisan view:clear
 php artisan optimize:clear
+cd /var/www/pterodactyl
+
+cat << 'EOF' > fix_dropdown_glitch.js
+const fs = require('fs');
+
+// প্রফেশনাল ফিক্স: ড্রপডাউন বা টপ মেনু ফাইল স্ক্যান করে ডুপ্লিকেট টিকিট রিমুভ করা
+const files = [
+    'resources/scripts/routers/layouts/ClientDropdown.tsx',
+    'resources/scripts/components/NavigationBar.tsx',
+    'resources/scripts/components/dashboard/DashboardContainer.tsx'
+];
+
+for (const file of files) {
+    if (fs.existsSync(file)) {
+        let content = fs.readFileSync(file, 'utf8');
+        
+        // অ্যাকাউন্ট মেনুর সাথে জোড়া লাগা টিকিট লিংক বা টেক্সট রিমুভ করা
+        content = content.replace(/<Link[^>]*to=\{?['"`]\/tickets['"`]\}?[^>]*>[\s\S]*?<\/Link>/g, '');
+        content = content.replace(/<NavLink[^>]*to=\{?['"`]\/tickets['"`]\}?[^>]*>[\s\S]*?<\/NavLink>/g, '');
+        content = content.replace(/Account\s*Tickets/g, 'Account');
+        content = content.replace(/Account\s*<[^>]+>\s*Tickets/g, 'Account');
+        
+        fs.writeFileSync(file, content);
+    }
+}
+console.log("✅ Dropdown glitch successfully cleaned!");
+EOF
+
+node fix_dropdown_glitch.js
+rm fix_dropdown_glitch.js
+
+# প্যানেল রিবিল্ড করা হচ্ছে
+chown -R www-data:www-data /var/www/pterodactyl/*
+export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
+yarn build:production
+php artisan view:clear
+php artisan optimize:clear
+cd /var/www/pterodactyl
+
+chown -R www-data:www-data /var/www/pterodactyl/*
+
+chown -R www-data:www-data /var/www/pterodactyl/.
+
+chmod -R 755 storage/* bootstrap/cache/
+
+php artisan optimize:clear
