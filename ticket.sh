@@ -5,9 +5,8 @@ mkdir -p app/Http/Requests/Api/Client
 mkdir -p resources/scripts/api/tickets
 mkdir -p resources/scripts/components/tickets
 mkdir -p resources/scripts/routers
-mkdir -p resources/views/admin/tickets 
+mkdir -p resources/views/admin/tickets
 
-cd /var/www/pterodactyl
 cat << 'EOF' > app/Http/Controllers/Admin/TicketsController.php
 <?php 
 namespace Pterodactyl\Http\Controllers\Admin; 
@@ -58,9 +57,8 @@ class TicketsController extends Controller {
         return ['success' => true];
     }
 }
-EOF 
+EOF
 
-cd /var/www/pterodactyl
 cat << 'EOF' > app/Http/Controllers/Api/Client/TicketsController.php
 <?php 
 namespace Pterodactyl\Http\Controllers\Api\Client; 
@@ -89,15 +87,15 @@ class TicketsController extends ClientApiController {
     }
 }
 EOF
+
 cat << 'EOF' > app/Http/Requests/Api/Client/TicketsRequest.php
 <?php 
 namespace Pterodactyl\Http\Requests\Api\Client; 
 class TicketsRequest extends ClientApiRequest {
     public function authorize(): bool { if (!parent::authorize()) { return false; } return true; }
 }
-EOF 
+EOF
 
-cd /var/www/pterodactyl
 cat << 'EOF' > database/migrations/2022_04_09_104734_create_tickets_table.php
 <?php 
 use Illuminate\Database\Migrations\Migration; use Illuminate\Database\Schema\Blueprint; use Illuminate\Support\Facades\Schema; 
@@ -106,6 +104,7 @@ class CreateTicketsTable extends Migration {
     public function down() { Schema::dropIfExists('tickets'); }
 }
 EOF
+
 cat << 'EOF' > database/migrations/2022_04_09_104754_create_ticket_messages_table.php
 <?php 
 use Illuminate\Database\Migrations\Migration; use Illuminate\Database\Schema\Blueprint; use Illuminate\Support\Facades\Schema; 
@@ -114,6 +113,7 @@ class CreateTicketMessagesTable extends Migration {
     public function down() { Schema::dropIfExists('ticket_messages'); }
 }
 EOF
+
 cat << 'EOF' > database/migrations/2022_04_09_105917_create_ticket_categories_table.php
 <?php 
 use Illuminate\Database\Migrations\Migration; use Illuminate\Database\Schema\Blueprint; use Illuminate\Support\Facades\Schema; 
@@ -121,35 +121,36 @@ class CreateTicketCategoriesTable extends Migration {
     public function up() { Schema::create('ticket_categories', function (Blueprint $table) { $table->id(); $table->string('name'); }); } 
     public function down() { Schema::dropIfExists('ticket_categories'); }
 }
-EOF 
+EOF
 
-cd /var/www/pterodactyl
 cat << 'EOF' > resources/scripts/api/tickets/createTicket.ts
 import http from '@/api/http'; 
 export default (category: number, priority: number, message: string, subject: string, relatedServer: number): Promise<any> => {
     return new Promise((resolve, reject) => { http.post('/api/client/tickets/create', { category, priority, message, subject, relatedServer, }).then((data) => { resolve(data.data || []); }).catch(reject); });
 };
 EOF
+
 cat << 'EOF' > resources/scripts/api/tickets/reply.ts
 import http from '@/api/http'; 
 export default (id: number, message: string): Promise<any> => {
     return new Promise((resolve, reject) => { http.post(`/api/client/tickets/${id}/message`, { message, }).then((data) => { resolve(data.data || []); }).catch(reject); });
 };
 EOF
+
 cat << 'EOF' > resources/scripts/api/tickets/ticket.ts
 import http from '@/api/http'; import { TicketResponse } from '@/components/tickets/TicketViewContainer'; 
 export default async (id: number): Promise<TicketResponse> => {
     const { data } = await http.get(`/api/client/tickets/view/${id}`); return (data.data || []);
 };
 EOF
+
 cat << 'EOF' > resources/scripts/api/tickets/tickets.ts
 import http from '@/api/http'; import { TicketsResponse } from '@/components/tickets/TicketsContainer'; 
 export default async (): Promise<TicketsResponse> => {
     const { data } = await http.get('/api/client/tickets'); return (data.data || []);
 };
-EOF 
+EOF
 
-cd /var/www/pterodactyl
 cat << 'EOF' > resources/scripts/components/tickets/TicketsContainer.tsx
 import React, { useEffect } from 'react'; import PageContentBlock from '@/components/elements/PageContentBlock'; import useFlash from '@/plugins/useFlash'; import useSWR from 'swr'; import tickets from '@/api/tickets/tickets'; import Spinner from '@/components/elements/Spinner'; import TitledGreyBox from '@/components/elements/TitledGreyBox'; import { Formik, Form, FormikHelpers, Field as FormikField } from 'formik'; import { object, string } from 'yup'; import tw from 'twin.macro'; import Field from '@/components/elements/Field'; import Button from '@/components/elements/Button'; import Label from '@/components/elements/Label'; import FormikFieldWrapper from '@/components/elements/FormikFieldWrapper'; import Select from '@/components/elements/Select'; import { Textarea } from '@/components/elements/Input'; import createTicket from '@/api/tickets/createTicket'; import GreyRowBox from '@/components/elements/GreyRowBox'; import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'; import { faComment } from '@fortawesome/free-solid-svg-icons'; import styled from 'styled-components/macro'; import { NavLink, useRouteMatch } from 'react-router-dom'; 
 
@@ -193,9 +194,8 @@ export default () => {
         </PageContentBlock>
     );
 };
-EOF 
+EOF
 
-cd /var/www/pterodactyl
 cat << 'EOF' > resources/scripts/components/tickets/TicketViewContainer.tsx
 import React, { useEffect } from 'react'; import PageContentBlock from '@/components/elements/PageContentBlock'; import useFlash from '@/plugins/useFlash'; import useSWR from 'swr'; import ticket from '@/api/tickets/ticket'; import { useParams } from 'react-router'; import Spinner from '@/components/elements/Spinner'; import tw from 'twin.macro'; import TitledGreyBox from '@/components/elements/TitledGreyBox'; import { FormikHelpers, Form, Formik, Field as FormikField } from 'formik'; import { object, string } from 'yup'; import Button from '@/components/elements/Button'; import Label from '@/components/elements/Label'; import FormikFieldWrapper from '@/components/elements/FormikFieldWrapper'; import { Textarea } from '@/components/elements/Input'; import reply from '@/api/tickets/reply'; import styled from 'styled-components/macro'; import { NavLink } from 'react-router-dom'; 
 const Code = styled.code`${tw`font-mono py-1 px-2 bg-neutral-900 rounded text-sm inline-block`}`; 
@@ -217,15 +217,15 @@ export default () => {
     );
 };
 EOF
+
 cat << 'EOF' > resources/scripts/routers/TicketsRouter.tsx
 import React from 'react'; import { Route, Switch } from 'react-router-dom'; import NavigationBar from '@/components/NavigationBar'; import { NotFound } from '@/components/elements/ScreenBlock'; import TransitionRouter from '@/TransitionRouter'; import TicketsContainer from '@/components/tickets/TicketsContainer'; import TicketViewContainer from '@/components/tickets/TicketViewContainer'; import { useLocation } from 'react-router'; import Spinner from '@/components/elements/Spinner'; 
 export default () => {
     const location = useLocation(); 
     return (<><NavigationBar /><TransitionRouter><React.Suspense fallback={<Spinner centered />}><Switch location={location}><Route path={'/tickets'} exact><TicketsContainer /></Route><Route path={'/tickets/:id'} exact><TicketViewContainer /></Route><Route path={'*'}><NotFound /></Route></Switch></React.Suspense></TransitionRouter></>);
 };
-EOF 
+EOF
 
-cd /var/www/pterodactyl
 cat << 'EOF' > resources/views/admin/tickets/list.blade.php
 @extends('layouts.admin') 
 @section('title') Tickets @endsection 
@@ -289,9 +289,8 @@ cat << 'EOF' > resources/views/admin/tickets/list.blade.php
         $('[data-action="delete-category"]').click(function (event) { event.preventDefault(); let self = $(this); swal({ title: '', type: 'warning', text: 'Are you sure you want to delete this category?', showCancelButton: true, confirmButtonText: 'Delete', confirmButtonColor: '#d9534f', closeOnConfirm: false, showLoaderOnConfirm: true, cancelButtonText: 'Cancel' }, function () { $.ajax({ method: 'DELETE', url: '{{ route('admin.tickets.categories.delete') }}', headers: {'X-CSRF-TOKEN': $('meta[name="_token"]').attr('content')}, data: { id: self.data('id') } }).done(() => { self.parent().parent().slideUp(); swal({ type: 'success', title: 'Success!', text: 'You have successfully deleted this category.' }); }).fail((jqXHR) => { swal({ type: 'error', title: 'Ooops!', text: (typeof jqXHR.responseJSON.error !== 'undefined') ? jqXHR.responseJSON.error : 'A system error has occurred!' }); }); }); });
     </script>
 @endsection
-EOF 
+EOF
 
-cd /var/www/pterodactyl
 cat << 'EOF' > resources/views/admin/tickets/view.blade.php
 @extends('layouts.admin') 
 @section('title') View Ticket @endsection 
@@ -373,9 +372,8 @@ cat << 'EOF' > resources/views/admin/tickets/view.blade.php
         });
     </script>
 @endsection
-EOF 
+EOF
 
-cd /var/www/pterodactyl
 cat << 'EOF' > patch_all.js
 const fs = require('fs');
 let adminRoutes = fs.readFileSync('routes/admin.php', 'utf8');
@@ -401,15 +399,6 @@ if (!appTsx.includes('TicketsRouter')) {
 }
 EOF
 node patch_all.js && rm patch_all.js 
-
-php artisan migrate --force
-chown -R www-data:www-data /var/www/pterodactyl/*
-export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
-yarn build:production
-php artisan view:clear
-php artisan optimize:clear 
-
-cd /var/www/pterodactyl 
 
 cat << 'EOF' > patch_arix_global_sidebar.js
 const fs = require('fs');
@@ -471,19 +460,9 @@ for (const file of allFiles) {
     }
 }
 if(!patched) console.log("⚠️ Auto-patch failed. Sidebar file not detected.");
-EOF 
-
+EOF
 node patch_arix_global_sidebar.js
 rm patch_arix_global_sidebar.js 
-
-# প্যানেল রিবিল্ড করা হচ্ছে
-chown -R www-data:www-data /var/www/pterodactyl/*
-export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
-yarn build:production
-php artisan route:clear
-php artisan view:clear
-php artisan optimize:clear
-cd /var/www/pterodactyl 
 
 cat << 'EOF' > fix_jsx.js
 const fs = require('fs');
@@ -512,19 +491,9 @@ if (fs.existsSync(file)) {
         }
     }
 }
-EOF 
-
+EOF
 node fix_jsx.js
 rm fix_jsx.js 
-
-# পুনরায় প্যানেল রিবিল্ড করা হচ্ছে
-chown -R www-data:www-data /var/www/pterodactyl/*
-export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
-yarn build:production
-php artisan route:clear
-php artisan view:clear
-php artisan optimize:clear
-cd /var/www/pterodactyl 
 
 cat << 'EOF' > fix_tickets_layout.js
 const fs = require('fs'); 
@@ -573,20 +542,9 @@ if (fs.existsSync(accRouter) && fs.existsSync(ticRouter)) {
     }
     fs.writeFileSync(ticRouter, tic);
 }
-EOF 
-
+EOF
 node fix_tickets_layout.js
 rm fix_tickets_layout.js 
-
-# প্যানেল রিবিল্ড করা হচ্ছে
-chown -R www-data:www-data /var/www/pterodactyl/*
-export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
-yarn build:production
-php artisan route:clear
-php artisan view:clear
-php artisan optimize:clear 
-
-cd /var/www/pterodactyl 
 
 cat << 'EOF' > fix_tickets_dashboard_404.js
 const fs = require('fs'); 
@@ -622,19 +580,9 @@ if (fs.existsSync(ticFile)) {
     tic = tic.replace(/<NavigationBar\s*\/>/g, ''); 
     fs.writeFileSync(ticFile, tic);
 }
-EOF 
-
+EOF
 node fix_tickets_dashboard_404.js
 rm fix_tickets_dashboard_404.js 
-
-# প্যানেল রিবিল্ড করা হচ্ছে
-chown -R www-data:www-data /var/www/pterodactyl/*
-export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
-yarn build:production
-php artisan route:clear
-php artisan view:clear
-php artisan optimize:clear
-cd /var/www/pterodactyl 
 
 cat << 'EOF' > fix_ticket_size.js
 const fs = require('fs');
@@ -659,18 +607,9 @@ try {
 } catch (e) {
     console.log("⚠️ No files needed fixing.");
 }
-EOF 
-
+EOF
 node fix_ticket_size.js
 rm fix_ticket_size.js 
-
-# প্যানেল রিবিল্ড করা হচ্ছে
-chown -R www-data:www-data /var/www/pterodactyl/*
-export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
-yarn build:production
-php artisan view:clear
-php artisan optimize:clear
-cd /var/www/pterodactyl 
 
 cat << 'EOF' > fix_exact_ticket_icon.js
 const fs = require('fs');
@@ -707,17 +646,15 @@ try {
 } catch (e) {
     console.log("⚠️ Error:", e.message);
 }
-EOF 
-
+EOF
 node fix_exact_ticket_icon.js
 rm fix_exact_ticket_icon.js 
 
-# প্যানেল রিবিল্ড করা হচ্ছে
-chown -R www-data:www-data /var/www/pterodactyl/*
-export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
-yarn build:production
-php artisan view:clear
-php artisan optimize:clear
-cd /var/www/pterodactyl
+php artisan migrate --force
 chown -R www-data:www-data /var/www/pterodactyl/*
 chmod -R 755 storage/* bootstrap/cache/
+export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
+yarn build:production
+php artisan route:clear
+php artisan view:clear
+php artisan optimize:clear
