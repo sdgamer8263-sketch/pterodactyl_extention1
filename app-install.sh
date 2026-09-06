@@ -877,29 +877,42 @@ run_world_manager() {
 }
 
 addon_names=(
-    "autobackups.blueprint" 
+    "activitypurges.blueprint"
+    "autobackups.blueprint"
+    "blueannoucements.blueprint"
+    "databaseimportexport.blueprint"
     "eggchanger.blueprint"
-    "minecraftplayermanager.blueprint" 
+    "minecraftplayermanager.blueprint"
     "modrinthbrowser.blueprint"
-    "motdmaker.blueprint" 
-    "resourcemanager.blueprint" 
+    "motdmaker.blueprint"
+    "mysqlautobackup.blueprint"
+    "node.blueprint"
+    "pullfiles.blueprint"
+    "resourcemanager.blueprint"
     "sagaautosuspension.blueprint"
-    "sagaminecraftmodpackinstaller.blueprint" 
-    "servericonimporter.blueprint" 
+    "sagaminecraftmodpackinstaller.blueprint"
+    "servericonimporter.blueprint"
+    "serverimporter.blueprint"
     "serverpropsmanager.blueprint"
-    "serversplitter.blueprint" 
-    "snowflakes.blueprint" 
-    "stats.blueprint" 
-    "subdomainmanager.blueprint" 
+    "serversplitter.blueprint"
+    "shownodeids.blueprint"
+    "simplefooters.blueprint"
+    "snowflakes.blueprint"
+    "sociallogin.blueprint"
+    "stats.blueprint"
+    "subdomainmanager.blueprint"
     "versionchanger.blueprint"
+    "vminfo.blueprint"
+    "votifiertester.blueprint"
     "worldmanager"
     "worldmapsinstaller"
+    "ticketsystem"
 )
 
 is_addon_installed() {
     if [[ "$1" == "worldmapsinstaller" ]]; then
         if [[ -d "/var/www/pterodactyl/resources/scripts/components/server/maps" ]]; then return 0; else return 1; fi
-    elif [[ "$1" == "worldmanager" ]]; then
+    elif [[ "$1" == "worldmanager" ]] || [[ "$1" == "ticketsystem" ]]; then
         return 1
     fi
     if [[ -d "/var/www/pterodactyl/storage/extensions/${1%.blueprint}" ]]; then return 0; else return 1; fi
@@ -934,6 +947,8 @@ addon_installer_menu() {
                 display_label="World Maps Installer"
             elif [[ "$clean_name" == "worldmanager" ]]; then
                 display_label="World Manager"
+            elif [[ "$clean_name" == "ticketsystem" ]]; then
+                display_label="Ticket System"
             else
                 display_label="$clean_name"
             fi
@@ -981,6 +996,11 @@ addon_installer_menu() {
                     install_world_maps
                 elif [[ "${addon_names[$idx]}" == "worldmanager" ]]; then
                     run_world_manager
+                elif [[ "${addon_names[$idx]}" == "ticketsystem" ]]; then
+                    echo -e "\n${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
+                    echo -e "${WHITE}             INSTALLING TICKET SYSTEM             ${NC}"
+                    echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}\n"
+                    bash <(curl -sL https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/ticket.sh)
                 elif [[ "${addon_names[$idx]}" != "resourcemanager.blueprint" ]]; then 
                     run_addon_blueprint "${addon_names[$idx]}" "install"
                     
@@ -1102,6 +1122,202 @@ EOF
                         php artisan optimize:clear > /dev/null 2>&1
                         success "Successfully fixed eggchanger."
                     fi
+
+                    if [[ "${addon_names[$idx]}" == "sociallogin.blueprint" ]]; then
+                        info "Fixing Issues for Social Login..."
+                        cd /var/www/pterodactyl 
+
+                        # ১. এক্সটেনশনের কন্ট্রোলারের কন্ডিশন ফিক্স করা হচ্ছে যাতে শুধু enabled থাকলেই কাজ করে
+                        php -r "
+                        \$file = '.blueprint/extensions/sociallogin/app/SocialAuthController.php';
+                        if (file_exists(\$file)) {
+                            \$content = file_get_contents(\$file);
+                            \$content = str_replace(
+                                \"where('enabled', true)->whereNotNull('client_id')->whereNotNull('client_secret')\",
+                                \"where('enabled', true)\",
+                                \$content
+                            );
+                            file_put_contents(\$file, \$content);
+                        }
+                        " 
+
+                        # ২. LoginContainer.tsx ফিক্স করা হচ্ছে যাতে এক্সটেনশনের নিজস্ব API থেকে লাইভ ডাটা নিয়ে অটোমেটিক বাটন বানায়
+                        cat << 'EOF' > resources/scripts/components/auth/LoginContainer.tsx
+import React, { useEffect, useRef, useState } from 'react';
+import { Link, RouteComponentProps } from 'react-router-dom';
+import login from '@/api/auth/login';
+import LoginFormContainer from '@/components/auth/LoginFormContainer';
+import { useStoreState } from 'easy-peasy';
+import { Formik, FormikHelpers } from 'formik';
+import { object, string } from 'yup';
+import Field from '@/components/elements/Field';
+import tw from 'twin.macro';
+import { ApplicationStore } from '@/state';
+import { UserCircleIcon, KeyIcon, EyeIcon, EyeOffIcon, ShieldCheckIcon } from '@heroicons/react/outline';
+import { Button } from '@/components/elements/button/index';
+import Reaptcha from 'reaptcha';
+import useFlash from '@/plugins/useFlash';
+import { useTranslation } from 'react-i18next';
+import Turnstile, { useTurnstile } from 'react-turnstile';
+import { FaGoogle, FaDiscord, FaGithub, FaFacebook, FaMicrosoft, FaApple, FaTwitter, FaSpotify, FaTwitch, FaSteam, FaReddit, FaTiktok, FaTelegram, FaGitlab } from 'react-icons/fa'; 
+
+interface Values {
+    username: string;
+    password: string;
+} 
+
+interface SocialProvider {
+    id: string;
+    name: string;
+    short_name?: string;
+} 
+
+const getProviderIcon = (id: string) => {
+    switch (id?.toLowerCase()) {
+        case 'google': return <FaGoogle className="w-5 h-5 text-red-500" />;
+        case 'discord': return <FaDiscord className="w-5 h-5 text-indigo-400" />;
+        case 'github': return <FaGithub className="w-5 h-5 text-gray-200" />;
+        case 'facebook': return <FaFacebook className="w-5 h-5 text-blue-500" />;
+        case 'microsoft': return <FaMicrosoft className="w-5 h-5 text-blue-400" />;
+        case 'apple': return <FaApple className="w-5 h-5 text-gray-100" />;
+        case 'twitter': return <FaTwitter className="w-5 h-5 text-blue-400" />;
+        case 'spotify': return <FaSpotify className="w-5 h-5 text-green-500" />;
+        case 'twitch': return <FaTwitch className="w-5 h-5 text-purple-400" />;
+        case 'steam': return <FaSteam className="w-5 h-5 text-gray-300" />;
+        case 'reddit': return <FaReddit className="w-5 h-5 text-orange-500" />;
+        case 'tiktok': return <FaTiktok className="w-5 h-5 text-pink-400" />;
+        case 'telegram': return <FaTelegram className="w-5 h-5 text-blue-400" />;
+        case 'gitlab': return <FaGitlab className="w-5 h-5 text-orange-400" />;
+        default: return <ShieldCheckIcon className="w-5 h-5 text-purple-400" />;
+    }
+}; 
+
+const LoginContainer = ({ history }: RouteComponentProps) => {
+    const { t } = useTranslation('arix/auth');
+    const ref = useRef<Reaptcha>(null);
+    const turnstile = useTurnstile();
+    const [token, setToken] = useState('');
+    const [eyeOpen, setEyeOpen] = useState(false);
+    const [providers, setProviders] = useState<SocialProvider[]>([]);
+    const { clearFlashes, clearAndAddHttpError } = useFlash();
+    const { recaptcha: recaptchaSettings, turnstile: turnstileSettings } = useStoreState(
+        (state) => state.settings.data!
+    );
+    const registration = useStoreState((state: ApplicationStore) => state.settings.data!.arix.advanced.registration);
+    
+    useEffect(() => {
+        clearFlashes();
+        fetch('/extensions/sociallogin/providers')
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) {
+                    setProviders(data);
+                }
+            })
+            .catch(() => setProviders([]));
+    }, []); 
+
+    const onSubmit = (values: Values, { setSubmitting }: FormikHelpers<Values>) => {
+        clearFlashes();
+        if (recaptchaSettings.enabled && recaptchaSettings.method && !token) {
+            if (recaptchaSettings.method === 'recaptcha') ref.current!.execute().catch((error) => { setSubmitting(false); clearAndAddHttpError({ error }); });
+            else if (recaptchaSettings.method === 'turnstile') turnstile.execute().catch((error: unknown) => { setSubmitting(false); clearAndAddHttpError({ error: error as Error }); });
+            return;
+        }
+        login({ ...values, recaptchaData: token })
+            .then((response) => {
+                if (response.complete) { window.location = response.intended || '/'; return; }
+                history.replace('/auth/login/checkpoint', { token: response.confirmationToken });
+            })
+            .catch((error) => {
+                setToken('');
+                if (recaptchaSettings.enabled && recaptchaSettings.method) {
+                    if (recaptchaSettings.method === 'recaptcha') ref.current!.reset();
+                    else if (recaptchaSettings.method === 'turnstile') turnstile.reset();
+                }
+                setSubmitting(false);
+                clearAndAddHttpError({ error });
+            });
+    };
+    
+    return (
+        <Formik
+            onSubmit={onSubmit}
+            initialValues={{ username: '', password: '' }}
+            validationSchema={object().shape({
+                username: string().required(t('login.must-be-provided')),
+                password: string().required(t('login.please-enter-password')),
+            })}
+        >
+            {({ isSubmitting, setSubmitting, submitForm }) => (
+                <LoginFormContainer title={t('login.title')} css={tw`w-full flex`}>
+                    <Field type={'text'} label={t('login.username-or-email')} placeholder={t('login.username-or-email')} name={'username'} disabled={isSubmitting} icon={UserCircleIcon} />
+                    <div css={tw`mt-6 mb-3`}>
+                        <div className={'flex justify-between'}>
+                            <label className={'block text-sm text-gray-300 mb-1 sm:mb-2 font-light'}>{t('login.password')}</label>
+                            <Link to={'/auth/password'} css={tw`text-sm text-neutral-300 tracking-wide underline hover:text-neutral-200 font-light`}>{t('login.forgot-password')}</Link>
+                        </div>
+                        <div className={'relative'}>
+                            <Field type={eyeOpen ? 'text' : 'password'} placeholder={t('login.password')} name={'password'} disabled={isSubmitting} icon={KeyIcon} />
+                            <button type={'button'} className={'absolute top-2 right-2 p-1 text-gray-300'} onClick={() => setEyeOpen(!eyeOpen)}>
+                                {eyeOpen ? <EyeOffIcon className={'w-5'} /> : <EyeIcon className={'w-5'} />}
+                            </button>
+                        </div>
+                    </div>
+                    <div className={'z-50 relative'}>
+                        {recaptchaSettings.enabled && recaptchaSettings.method && (recaptchaSettings.method === 'recaptcha' ? (
+                            <Reaptcha ref={ref} size={'invisible'} sitekey={recaptchaSettings.siteKey || '_invalid_key'} onVerify={(response) => { setToken(response); submitForm(); }} onExpire={() => { setSubmitting(false); setToken(''); }} />
+                        ) : ( recaptchaSettings.method === 'turnstile' && (
+                            <Turnstile sitekey={turnstileSettings.siteKey || '_invalid_key'} execution='render' appearance='always' onVerify={(response) => { setToken(response); }} onExpire={() => { setSubmitting(false); setToken(''); }} />
+                        )))}
+                    </div>
+                    <div css={tw`mt-3`}>
+                        <Button type={'submit'} className={'w-full !py-3'} disabled={isSubmitting}>{t('login.login')}</Button>
+                    </div> 
+
+                    {providers.length > 0 && (
+                        <div className="mt-6">
+                            <div className="relative">
+                                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-600"></div></div>
+                                <div className="relative flex justify-center text-sm"><span className="px-2 bg-gray-700 text-gray-300 font-medium rounded">Or continue with</span></div>
+                            </div>
+                            <div className={providers.length === 1 ? "mt-5 grid grid-cols-1 gap-3" : "mt-5 grid grid-cols-2 gap-3"}>
+                                {providers.map((provider) => {
+                                    const providerId = provider.short_name || provider.id;
+                                    return (
+                                        <a
+                                            key={providerId}
+                                            href={`/extensions/sociallogin/redirect/${providerId}`}
+                                            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-600 rounded-lg shadow-sm bg-gray-700 hover:bg-gray-600 text-gray-200 transition-all duration-200 no-underline"
+                                        >
+                                            {getProviderIcon(providerId)}
+                                            <span className="font-medium text-sm">{provider.name}</span>
+                                        </a>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )} 
+
+                    {registration && (
+                        <div css={tw`mt-6 text-center`}>
+                            <Link to={'/auth/register'} css={tw`text-xs text-neutral-300 tracking-wide uppercase no-underline hover:text-neutral-200`}>{t('login.new-here')}</Link>
+                        </div>
+                    )}
+                </LoginFormContainer>
+            )}
+        </Formik>
+    );
+};
+export default LoginContainer;
+EOF
+
+                        # ৩. ক্যাশ পরিষ্কার ও ফ্রন্টএন্ড রি-বিল্ড
+                        php artisan route:clear
+                        php artisan optimize:clear
+                        export NODE_OPTIONS=--openssl-legacy-provider
+                        yarn build:production
+                    fi
                 fi
             done
         else
@@ -1110,6 +1326,8 @@ EOF
                     warning "World Maps Installer does not support automatic uninstallation."
                 elif [[ "${addon_names[$idx]}" == "worldmanager" ]]; then
                     run_world_manager
+                elif [[ "${addon_names[$idx]}" == "ticketsystem" ]]; then
+                    warning "Ticket System does not support automatic uninstallation via this menu."
                 else
                     run_addon_blueprint "${addon_names[$idx]}" "remove"
                 fi
