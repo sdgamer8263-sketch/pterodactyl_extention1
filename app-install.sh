@@ -151,7 +151,7 @@ prompt_action() {
 menu_210() {
     while true; do
         show_banner
-        echo -e "${WHITE}Select Edition for ${GREEN}Arix v2.1.0${WHITE}:${NC}\n"
+        echo -e "${WHITE}Select Edition for ${GREEN}Arix v2.1.2${WHITE}:${NC}\n"
         echo -e "${CYAN}  [ 1 ] ${WHITE}Standard Edition (Non-Blueprint)"
         echo -e "${CYAN}  [ 2 ] ${WHITE}Blueprint Edition"
         echo -e "${CYAN}  [ 3 ] ${WHITE}Go Back${NC}\n"
@@ -207,7 +207,7 @@ theme_installer_menu() {
         show_banner
         typewriter " Theme Installer - Select Version:"
         echo ""
-        echo -e "${CYAN}  [ 1 ] ${WHITE}Arix v2.1.0 ${GREEN}(Latest)${NC}"
+        echo -e "${CYAN}  [ 1 ] ${WHITE}Arix v2.1.2 ${GREEN}(Latest)${NC}"
         echo -e "${CYAN}  [ 2 ] ${WHITE}Arix v2.0.8 ${YELLOW}(Legacy)${NC}"
         echo -e "${RED}  [ 0 ] ${WHITE}Go Back${NC}\n"
         
@@ -528,6 +528,18 @@ EOF
             find /var/www/pterodactyl -type f -exec chmod 644 {} \;
             chmod -R 775 storage/* bootstrap/cache/
             chown -R www-data:www-data /var/www/pterodactyl/*
+            grep -rl "2.1.[0-9]" resources/ config/ app/ 2>/dev/null | xargs -r sed -i 's/2.1.[0-9]/2.1.2/g' || true
+            php artisan view:clear > /dev/null 2>&1
+            php artisan optimize:clear > /dev/null 2>&1
+            cd /var/www/pterodactyl
+            sed -i "s/'version' => '[0-9.]*'/'version' => '1.15.1'/g" config/app.php || true
+            php artisan config:clear > /dev/null 2>&1
+            php artisan optimize:clear > /dev/null 2>&1
+            cd /var/www/pterodactyl
+            yarn add xterm-addon-unicode11 > /dev/null 2>&1
+            export NODE_OPTIONS=--openssl-legacy-provider
+            yarn build > /dev/null 2>&1
+            cd
         ) & spinner $! 
 
         echo -e "\n${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
