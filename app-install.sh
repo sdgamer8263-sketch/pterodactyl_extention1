@@ -79,9 +79,9 @@ verify_license() {
     echo -e "${CYAN}└──────────────────────────────────────────────┘${NC}\n"
     
     echo -ne "${MAGENTA} ➜ ${WHITE}Enter your Registered Email: ${CYAN}"
-    read USER_EMAIL
+    read USER_EMAIL < /dev/tty
     echo -ne "${MAGENTA} ➜ ${WHITE}Enter your License Key: ${CYAN}"
-    read USER_KEY
+    read USER_KEY < /dev/tty
     echo -ne "${NC}" 
     
     echo ""
@@ -126,7 +126,7 @@ prompt_action() {
         fi
         
         echo -ne "${MAGENTA} ➜ ${WHITE}Choose an action: ${CYAN}"
-        read act_choice
+        read act_choice < /dev/tty
         echo -ne "${NC}"
         
         if [ "$version" == "2.1.0" ] && [ "$LICENSE_TYPE" == "blueprint" ]; then
@@ -157,7 +157,7 @@ menu_210() {
         echo -e "${CYAN}  [ 3 ] ${WHITE}Go Back${NC}\n"
         
         echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
-        read choice_210
+        read choice_210 < /dev/tty
         echo -ne "${NC}"
         
         case $choice_210 in
@@ -184,7 +184,7 @@ menu_208() {
         echo -e "${CYAN}  [ 3 ] ${WHITE}Go Back${NC}\n"
         
         echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
-        read choice_208
+        read choice_208 < /dev/tty
         echo -ne "${NC}"
         
         case $choice_208 in
@@ -212,7 +212,7 @@ theme_installer_menu() {
         echo -e "${RED}  [ 0 ] ${WHITE}Go Back${NC}\n"
         
         echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
-        read th_choice
+        read th_choice < /dev/tty
         echo -ne "${NC}"
         
         case $th_choice in
@@ -225,9 +225,6 @@ theme_installer_menu() {
 }
 
 execute_theme_action() {
-    # ----------------------------------------------------
-    # UPDATE PROCESS (ONLY FOR 2.1.0 BLUEPRINT)
-    # ----------------------------------------------------
     if [ "$ACTION" == "update_theme" ]; then
         show_banner
         echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
@@ -267,13 +264,10 @@ execute_theme_action() {
         echo -e "\n${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
         typewriter "         🚀 PANEL UPDATED SUCCESSFULLY! 🚀        "
         echo -e "${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}\n"
-        read -p "Press Enter to return to main menu..."
+        read -p "Press Enter to return to main menu..." dummy < /dev/tty
         return 0
     fi
 
-    # ----------------------------------------------------
-    # UNINSTALL PROCESS
-    # ----------------------------------------------------
     if [ "$ACTION" == "uninstall" ]; then
         show_banner
         echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
@@ -292,13 +286,10 @@ execute_theme_action() {
         echo -e "\n${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
         typewriter "     🗑️ UNINSTALLATION COMPLETED SUCCESSFULLY! 🗑️    "
         echo -e "${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}\n"
-        read -p "Press Enter to return to main menu..."
+        read -p "Press Enter to return to main menu..." dummy < /dev/tty
         return 0
     fi
 
-    # ----------------------------------------------------
-    # INSTALL PROCESS
-    # ----------------------------------------------------
     if [ "$ACTION" == "install" ]; then
         show_banner
         verify_license "$LICENSE_TYPE" "$LICENSE_VERSION"
@@ -545,7 +536,7 @@ EOF
         echo -e "\n${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
         typewriter "    🎉 INSTALLATION COMPLETED SUCCESSFULLY! 🎉    "
         echo -e "${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}\n"
-        read -p "Press Enter to return to main menu..."
+        read -p "Press Enter to return to main menu..." dummy < /dev/tty
         return 0
     fi
 }
@@ -557,7 +548,7 @@ install_world_maps() {
     sleep 1
 
     echo -e "\033[1;33mPlease enter your CURSEFORGE_API Key (or press enter to skip):\033[0m"
-    read -p "> " api_key
+    read -p "> " api_key < /dev/tty
 
     cd /var/www/pterodactyl
 
@@ -890,27 +881,64 @@ run_world_manager() {
 
 addon_names=(
     "activitypurges.blueprint"
+    "adminauditlogs.blueprint"
     "autobackups.blueprint"
     "blueannoucements.blueprint"
+    "configeditor.blueprint"
+    "consolelogs.blueprint"
+    "customcss.blueprint"
+    "customserversort.blueprint"
     "databaseimportexport.blueprint"
     "eggchanger.blueprint"
+    "huxregister.blueprint"
+    "laravellogs.blueprint"
+    "loader.blueprint"
+    "lyrdyannounce.blueprint"
+    "mclogs.blueprint"
+    "mcp.blueprint"
+    "mcplayer.blueprint"
+    "mcplugins.blueprint"
+    "mctools.blueprint"
+    "minecraftmodmanager.blueprint"
     "minecraftplayermanager.blueprint"
+    "minecraftpluginmanager.blueprint"
     "modrinthbrowser.blueprint"
+    "monacoeditor.blueprint"
     "motdmaker.blueprint"
     "mysqlautobackup.blueprint"
     "node.blueprint"
+    "nopagination.blueprint"
+    "paneladdressoverride.blueprint"
+    "playerlisting.blueprint"
+    "pstatistics.blueprint"
+    "pterodactylcpuburst.blueprint"
+    "pterodactylpanelban.blueprint"
+    "pterodactylramburst.blueprint"
+    "pteromonaco.blueprint"
     "pullfiles.blueprint"
+    "redirect.blueprint"
+    "resourcealerts.blueprint"
     "resourcemanager.blueprint"
     "sagaautosuspension.blueprint"
     "sagaminecraftmodpackinstaller.blueprint"
+    "serverbackgrounds.blueprint"
     "servericonimporter.blueprint"
+    "serverid.blueprint"
     "serverimporter.blueprint"
     "serverpropsmanager.blueprint"
     "serversplitter.blueprint"
     "shownodeids.blueprint"
+    "sidebar.blueprint"
     "sociallogin.blueprint"
+    "startupchanger.blueprint"
     "stats.blueprint"
     "subdomainmanager.blueprint"
+    "subdomains.blueprint"
+    "tawkto.blueprint"
+    "translations.blueprint"
+    "trashbin.blueprint"
+    "urldownloader.blueprint"
+    "vanillatweaks.blueprint"
     "versionchanger.blueprint"
     "vminfo.blueprint"
     "votifiertester.blueprint"
@@ -983,7 +1011,7 @@ addon_installer_menu() {
         echo -e " ${RED}0${NC}             : Go Back"
         echo -e "${CYAN} ──────────────────────────────────────────────────────────${NC}"
 
-        read -p " 👉 Select Action: " choice
+        read -p " 👉 Select Action: " choice < /dev/tty
         choice=${choice//,/ }; choice_lower=${choice,,}
         if [[ "$choice_lower" == "0" ]]; then return 0; fi
 
@@ -1348,7 +1376,7 @@ EOF
                 fi
             done
         fi
-        echo ""; read -p "Done. Press Enter to return..."
+        echo ""; read -p "Done. Press Enter to return..." dummy < /dev/tty
     done
 }
 
@@ -1360,7 +1388,7 @@ while true; do
     echo -e "${RED}  [ 0 ] ${WHITE}Exit${NC}\n"
     
     echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
-    read main_opt
+    read main_opt < /dev/tty
     echo -ne "${NC}"
     
     case $main_opt in
