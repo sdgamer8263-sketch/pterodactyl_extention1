@@ -207,7 +207,7 @@ theme_installer_menu() {
         show_banner
         typewriter " Theme Installer - Select Version:"
         echo ""
-        echo -e "${CYAN}  [ 1 ] ${WHITE}Arix v2.1.0 ${GREEN}(Latest)${NC}"
+        echo -e "${CYAN}  [ 1 ] ${WHITE}Arix v2.1.0 to 2.1.2 ${GREEN}(Latest)${NC}"
         echo -e "${CYAN}  [ 2 ] ${WHITE}Arix v2.0.8 ${YELLOW}(Legacy)${NC}"
         echo -e "${RED}  [ 0 ] ${WHITE}Go Back${NC}\n"
         
