@@ -164,12 +164,12 @@ menu_210() {
             1) 
                 LICENSE_TYPE="non-blueprint"; LICENSE_VERSION="2.1.0"
                 DOWNLOAD_URL="https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/sd/v210/pterodactyl.zip"
-                if prompt_action "$LICENSE_VERSION"; then break 2; fi ;;
+                if prompt_action "$LICENSE_VERSION"; then return 0; fi ;;
             2) 
                 LICENSE_TYPE="blueprint"; LICENSE_VERSION="2.1.0"
                 DOWNLOAD_URL="https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/pterodactyl.zip"
-                if prompt_action "$LICENSE_VERSION"; then break 2; fi ;;
-            3) break ;;
+                if prompt_action "$LICENSE_VERSION"; then return 0; fi ;;
+            3) return 0 ;;
             *) warning "Invalid selection."; sleep 1 ;;
         esac
     done
@@ -191,12 +191,12 @@ menu_208() {
             1) 
                 LICENSE_TYPE="non-blueprint"; LICENSE_VERSION="2.0.8"
                 DOWNLOAD_URL="https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/sd/v208/pterodactyl.zip"
-                if prompt_action "$LICENSE_VERSION"; then break 2; fi ;;
+                if prompt_action "$LICENSE_VERSION"; then return 0; fi ;;
             2) 
                 LICENSE_TYPE="blueprint"; LICENSE_VERSION="2.0.8"
                 DOWNLOAD_URL="https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/sd/av1pterodactyl.zip"
-                if prompt_action "$LICENSE_VERSION"; then break 2; fi ;;
-            3) break ;;
+                if prompt_action "$LICENSE_VERSION"; then return 0; fi ;;
+            3) return 0 ;;
             *) warning "Invalid selection."; sleep 1 ;;
         esac
     done
@@ -218,13 +218,16 @@ theme_installer_menu() {
         case $th_choice in
             1) menu_210; if [ -n "$ACTION" ]; then return 0; fi ;;
             2) menu_208; if [ -n "$ACTION" ]; then return 0; fi ;;
-            0) return 1 ;;
+            0) ACTION=""; return 0 ;;
             *) echo ""; warning "Invalid selection."; sleep 1 ;;
         esac
     done
 }
 
 execute_theme_action() {
+    # ----------------------------------------------------
+    # UPDATE PROCESS (ONLY FOR 2.1.0 BLUEPRINT)
+    # ----------------------------------------------------
     if [ "$ACTION" == "update_theme" ]; then
         show_banner
         echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
@@ -268,6 +271,9 @@ execute_theme_action() {
         return 0
     fi
 
+    # ----------------------------------------------------
+    # UNINSTALL PROCESS
+    # ----------------------------------------------------
     if [ "$ACTION" == "uninstall" ]; then
         show_banner
         echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
@@ -290,6 +296,9 @@ execute_theme_action() {
         return 0
     fi
 
+    # ----------------------------------------------------
+    # INSTALL PROCESS
+    # ----------------------------------------------------
     if [ "$ACTION" == "install" ]; then
         show_banner
         verify_license "$LICENSE_TYPE" "$LICENSE_VERSION"
@@ -1359,7 +1368,7 @@ EOF
                         php artisan route:clear
                         php artisan optimize:clear
                         export NODE_OPTIONS=--openssl-legacy-provider
-                        yarn build:production
+                        ( yarn build:production > /dev/null 2>&1 ) & spinner $!
                     fi
                 fi
             done
