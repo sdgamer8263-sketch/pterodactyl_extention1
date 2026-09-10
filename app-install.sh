@@ -151,7 +151,7 @@ prompt_action() {
 menu_210() {
     while true; do
         show_banner
-        echo -e "${WHITE}Select Edition for ${GREEN}Arix v2.1.2${WHITE}:${NC}\n"
+        echo -e "${WHITE}Select Edition for ${GREEN}Arix v2.1.0${WHITE}:${NC}\n"
         echo -e "${CYAN}  [ 1 ] ${WHITE}Standard Edition (Non-Blueprint)"
         echo -e "${CYAN}  [ 2 ] ${WHITE}Blueprint Edition"
         echo -e "${CYAN}  [ 3 ] ${WHITE}Go Back${NC}\n"
@@ -207,7 +207,7 @@ theme_installer_menu() {
         show_banner
         typewriter " Theme Installer - Select Version:"
         echo ""
-        echo -e "${CYAN}  [ 1 ] ${WHITE}Arix v2.1.2 ${GREEN}(Latest)${NC}"
+        echo -e "${CYAN}  [ 1 ] ${WHITE}Arix v2.1.0 ${GREEN}(Latest)${NC}"
         echo -e "${CYAN}  [ 2 ] ${WHITE}Arix v2.0.8 ${YELLOW}(Legacy)${NC}"
         echo -e "${RED}  [ 0 ] ${WHITE}Go Back${NC}\n"
         
@@ -908,8 +908,6 @@ addon_names=(
     "serverpropsmanager.blueprint"
     "serversplitter.blueprint"
     "shownodeids.blueprint"
-    "simplefooters.blueprint"
-    "snowflakes.blueprint"
     "sociallogin.blueprint"
     "stats.blueprint"
     "subdomainmanager.blueprint"
@@ -947,6 +945,11 @@ addon_installer_menu() {
         error "Blueprint Framework is NOT installed!"
         sleep 3; return 0
     fi
+    
+    show_banner
+    verify_license "blueprint" "addons"
+    if [ "$LICENSE_VALID" == "false" ]; then return 0; fi
+
     while true; do
         clear
         echo -e "${CYAN} ╔══════════════════════════════════════════════════════════╗${NC}"
