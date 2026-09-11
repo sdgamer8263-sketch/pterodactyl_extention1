@@ -207,7 +207,7 @@ theme_installer_menu() {
         show_banner
         typewriter " Theme Installer - Select Version:"
         echo ""
-        echo -e "${CYAN}  [ 1 ] ${WHITE}Arix v2.1.0 to 2.1.2 ${GREEN}(Latest)${NC}"
+        echo -e "${CYAN}  [ 1 ] ${WHITE}Arix v2.1.0 ${GREEN}(Latest)${NC}"
         echo -e "${CYAN}  [ 2 ] ${WHITE}Arix v2.0.8 ${YELLOW}(Legacy)${NC}"
         echo -e "${RED}  [ 0 ] ${WHITE}Go Back${NC}\n"
         
@@ -287,7 +287,7 @@ execute_theme_action() {
         cd /var/www/pterodactyl 
         
         info "Running Arix Uninstall Process..."
-        php artisan arix uninstall
+        php artisan arix uninstall < /dev/tty
         
         echo -e "\n${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
         typewriter "     🗑️ UNINSTALLATION COMPLETED SUCCESSFULLY! 🗑️    "
@@ -503,7 +503,7 @@ class Arix extends Command
     }
 }
 EOF
-            php artisan arix install
+            php artisan arix install < /dev/tty
         else
             info "Skipping Arix.php patch for legacy v2.0.8..."
         fi
@@ -528,18 +528,6 @@ EOF
             find /var/www/pterodactyl -type f -exec chmod 644 {} \;
             chmod -R 775 storage/* bootstrap/cache/
             chown -R www-data:www-data /var/www/pterodactyl/*
-            grep -rl "2.1.[0-9]" resources/ config/ app/ 2>/dev/null | xargs -r sed -i 's/2.1.[0-9]/2.1.2/g' || true
-            php artisan view:clear > /dev/null 2>&1
-            php artisan optimize:clear > /dev/null 2>&1
-            cd /var/www/pterodactyl
-            sed -i "s/'version' => '[0-9.]*'/'version' => '1.15.1'/g" config/app.php || true
-            php artisan config:clear > /dev/null 2>&1
-            php artisan optimize:clear > /dev/null 2>&1
-            cd /var/www/pterodactyl
-            yarn add xterm-addon-unicode11 > /dev/null 2>&1
-            export NODE_OPTIONS=--openssl-legacy-provider
-            yarn build > /dev/null 2>&1
-            cd
         ) & spinner $! 
 
         echo -e "\n${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
@@ -877,7 +865,7 @@ run_world_manager() {
         
         if [[ -f "setup.sh" ]]; then
             chmod +x setup.sh
-            bash setup.sh
+            bash setup.sh < /dev/tty
             rm -f setup.sh
         else
             error "setup.sh not found inside world.zip!"
@@ -1052,7 +1040,7 @@ addon_installer_menu() {
                     echo -e "\n${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
                     echo -e "${WHITE}             INSTALLING TICKET SYSTEM             ${NC}"
                     echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}\n"
-                    bash <(curl -sL https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/ticket.sh)
+                    bash <(curl -sL https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/ticket.sh) < /dev/tty
                 elif [[ "${addon_names[$idx]}" != "resourcemanager.blueprint" ]]; then 
                     run_addon_blueprint "${addon_names[$idx]}" "install"
                     
