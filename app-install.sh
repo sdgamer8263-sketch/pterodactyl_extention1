@@ -972,7 +972,7 @@ addon_installer_menu() {
     fi
     
     show_banner
-    verify_license "blueprint" "addons"
+    verify_license "blueprint" "2.1.0"
     if [ "$LICENSE_VALID" == "false" ]; then return 0; fi
 
     while true; do
