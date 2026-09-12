@@ -1,4 +1,4 @@
- #!/bin/bash
+#!/bin/bash
 set -e 
 
 API_URL="http://78.154.103.27:13915/api/verify" 
@@ -701,7 +701,7 @@ export default ({ minecraftMap, className }: Props) => {
         .then(function () {
             addFlash({ type: 'success', key: 'minecraftMaps', message: 'File has been scheduled for downloading.' });
         })
-        .catch(function (error) {
+        .catch(function errorCallback(error) {
             clearAndAddHttpError({ key: 'minecraftMaps', error });
         });
     }; 
@@ -959,10 +959,6 @@ addon_installer_menu() {
         error "Blueprint Framework is NOT installed!"
         sleep 3; return 0
     fi
-    
-    show_banner
-    verify_license "blueprint" "2.1.0"
-    if [ "$LICENSE_VALID" == "false" ]; then return 0; fi
 
     while true; do
         clear
