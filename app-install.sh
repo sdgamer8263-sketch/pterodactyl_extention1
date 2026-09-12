@@ -1,4 +1,4 @@
-#!/bin/bash
+ #!/bin/bash
 set -e 
 
 API_URL="http://78.154.103.27:13915/api/verify" 
@@ -117,7 +117,6 @@ prompt_action() {
         echo -e "${CYAN}  [ 1 ] ${WHITE}Install Theme"
         echo -e "${CYAN}  [ 2 ] ${WHITE}Uninstall Theme"
         
-        # 2.1.0 Blueprint er jonno Update Option
         if [ "$version" == "2.1.0" ] && [ "$LICENSE_TYPE" == "blueprint" ]; then
             echo -e "${CYAN}  [ 3 ] ${WHITE}Update"
             echo -e "${CYAN}  [ 4 ] ${WHITE}Go Back${NC}\n"
@@ -225,9 +224,6 @@ theme_installer_menu() {
 }
 
 execute_theme_action() {
-    # ----------------------------------------------------
-    # UPDATE PROCESS (ONLY FOR 2.1.0 BLUEPRINT)
-    # ----------------------------------------------------
     if [ "$ACTION" == "update_theme" ]; then
         show_banner
         echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
@@ -242,7 +238,6 @@ execute_theme_action() {
 
         step "1/2" "Cloning repository and extracting update files..."
         (
-            # Fake cloning animation
             sleep 3
         ) & spinner $!
         success "Files cloned and extracted successfully."
@@ -271,9 +266,6 @@ execute_theme_action() {
         return 0
     fi
 
-    # ----------------------------------------------------
-    # UNINSTALL PROCESS
-    # ----------------------------------------------------
     if [ "$ACTION" == "uninstall" ]; then
         show_banner
         echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
@@ -296,9 +288,6 @@ execute_theme_action() {
         return 0
     fi
 
-    # ----------------------------------------------------
-    # INSTALL PROCESS
-    # ----------------------------------------------------
     if [ "$ACTION" == "install" ]; then
         show_banner
         verify_license "$LICENSE_TYPE" "$LICENSE_VERSION"
@@ -1352,7 +1341,6 @@ const LoginContainer = ({ history }: RouteComponentProps) => {
 export default LoginContainer;
 EOF
 
-                        # ৩. ক্যাশ পরিষ্কার ও ফ্রন্টএন্ড রি-বিল্ড
                         php artisan route:clear
                         php artisan optimize:clear
                         export NODE_OPTIONS=--openssl-legacy-provider
