@@ -134,14 +134,14 @@ prompt_action() {
                 1) ACTION="install"; return 0 ;;
                 2) ACTION="uninstall"; return 0 ;;
                 3) ACTION="update_theme"; return 0 ;;
-                4) ACTION=""; return 1 ;;
+                4) ACTION=""; return 0 ;;
                 *) warning "Invalid selection."; sleep 1 ;;
             esac
         else
             case $act_choice in
                 1) ACTION="install"; return 0 ;;
                 2) ACTION="uninstall"; return 0 ;;
-                3) ACTION=""; return 1 ;;
+                3) ACTION=""; return 0 ;;
                 *) warning "Invalid selection."; sleep 1 ;;
             esac
         fi
