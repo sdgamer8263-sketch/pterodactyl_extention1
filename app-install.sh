@@ -867,42 +867,24 @@ run_world_manager() {
 
 addon_names=(
     "activitypurges.blueprint"
-    "adminauditlogs.blueprint"
     "autobackups.blueprint"
     "blueannoucements.blueprint"
-    "configeditor.blueprint"
     "consolelogs.blueprint"
     "customcss.blueprint"
     "customserversort.blueprint"
     "databaseimportexport.blueprint"
     "eggchanger.blueprint"
-    "huxregister.blueprint"
     "laravellogs.blueprint"
-    "loader.blueprint"
-    "lyrdyannounce.blueprint"
     "mclogs.blueprint"
-    "mcp.blueprint"
     "mcplayer.blueprint"
-    "mcplugins.blueprint"
-    "mctools.blueprint"
-    "minecraftmodmanager.blueprint"
     "minecraftplayermanager.blueprint"
     "minecraftpluginmanager.blueprint"
     "modrinthbrowser.blueprint"
-    "monacoeditor.blueprint"
     "motdmaker.blueprint"
     "mysqlautobackup.blueprint"
     "node.blueprint"
-    "nopagination.blueprint"
     "paneladdressoverride.blueprint"
-    "playerlisting.blueprint"
-    "pstatistics.blueprint"
-    "pterodactylcpuburst.blueprint"
-    "pterodactylpanelban.blueprint"
-    "pterodactylramburst.blueprint"
-    "pteromonaco.blueprint"
     "pullfiles.blueprint"
-    "redirect.blueprint"
     "resourcealerts.blueprint"
     "resourcemanager.blueprint"
     "sagaautosuspension.blueprint"
@@ -914,15 +896,10 @@ addon_names=(
     "serverpropsmanager.blueprint"
     "serversplitter.blueprint"
     "shownodeids.blueprint"
-    "sidebar.blueprint"
     "sociallogin.blueprint"
-    "startupchanger.blueprint"
     "stats.blueprint"
     "subdomainmanager.blueprint"
     "subdomains.blueprint"
-    "tawkto.blueprint"
-    "translations.blueprint"
-    "trashbin.blueprint"
     "urldownloader.blueprint"
     "vanillatweaks.blueprint"
     "versionchanger.blueprint"
@@ -931,12 +908,13 @@ addon_names=(
     "worldmanager"
     "worldmapsinstaller"
     "ticketsystem"
+    "registermodule"
 )
 
 is_addon_installed() {
     if [[ "$1" == "worldmapsinstaller" ]]; then
         if [[ -d "/var/www/pterodactyl/resources/scripts/components/server/maps" ]]; then return 0; else return 1; fi
-    elif [[ "$1" == "worldmanager" ]] || [[ "$1" == "ticketsystem" ]]; then
+    elif [[ "$1" == "worldmanager" ]] || [[ "$1" == "ticketsystem" ]] || [[ "$1" == "registermodule" ]]; then
         return 1
     fi
     if [[ -d "/var/www/pterodactyl/storage/extensions/${1%.blueprint}" ]]; then return 0; else return 1; fi
@@ -974,6 +952,8 @@ addon_installer_menu() {
                 display_label="World Manager"
             elif [[ "$clean_name" == "ticketsystem" ]]; then
                 display_label="Ticket System"
+            elif [[ "$clean_name" == "registermodule" ]]; then
+                display_label="Register Module"
             else
                 display_label="$clean_name"
             fi
@@ -1026,6 +1006,860 @@ addon_installer_menu() {
                     echo -e "${WHITE}             INSTALLING TICKET SYSTEM             ${NC}"
                     echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}\n"
                     bash <(curl -sL https://raw.githubusercontent.com/sdgamer8263-sketch/pterodactyl_extention1/main/ticket.sh) < /dev/tty
+                elif [[ "${addon_names[$idx]}" == "registermodule" ]]; then
+                    echo -e "\n${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
+                    echo -e "${WHITE}             INSTALLING REGISTER MODULE           ${NC}"
+                    echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}\n"
+                    
+                    set +e
+                    
+                    cd /var/www/pterodactyl
+
+                    # ফাইলে নতুন কোড রাইট করা হচ্ছে
+                    cat << 'EOF' > resources/scripts/components/auth/RegisterContainer.tsx
+import React, { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import register from '@/api/auth/register';
+import RegisterFormContainer from '@/components/auth/LoginFormContainer';
+import { useStoreState } from 'easy-peasy';
+import { Formik, FormikHelpers } from 'formik';
+import { object, string, ref as yupRef } from 'yup';
+import Field from '@/components/elements/Field';
+import tw from 'twin.macro';
+import { Button } from '@/components/elements/button/index';
+import { UserCircleIcon, AtSymbolIcon, LockClosedIcon } from '@heroicons/react/outline';
+import Reaptcha from 'reaptcha';
+import useFlash from '@/plugins/useFlash';
+import Turnstile, { useTurnstile } from 'react-turnstile';
+import { useTranslation } from 'react-i18next';
+
+interface Values {
+    email: string;
+    username: string;
+    firstname: string;
+    lastname: string;
+    password?: string;
+    password_confirmation?: string;
+}
+
+const RegisterContainer = () => {
+    const ref = useRef<Reaptcha>(null);
+    const turnstile = useTurnstile();
+    const [token, setToken] = useState('');
+    const { t } = useTranslation('arix/auth');
+
+    const { clearFlashes, clearAndAddHttpError, addFlash } = useFlash();
+    const { recaptcha: recaptchaSettings, turnstile: turnstileSettings } = useStoreState(
+        (state) => state.settings.data!
+    );
+
+    useEffect(() => {
+        clearFlashes();
+    }, []);
+
+    const onSubmit = (values: Values, { setSubmitting }: FormikHelpers<Values>) => {
+        clearFlashes();
+
+        if (recaptchaSettings.enabled && recaptchaSettings.method && !token) {
+            if (recaptchaSettings.method === 'recaptcha') {
+                ref.current!.execute().catch((error) => {
+                    console.error(error);
+                    setSubmitting(false);
+                    clearAndAddHttpError({ error });
+                });
+            } else if (recaptchaSettings.method === 'turnstile') {
+                turnstile.execute().catch((error: unknown) => {
+                    console.error(error);
+                    setSubmitting(false);
+                    clearAndAddHttpError({ error: error as Error });
+                });
+            }
+            return;
+        }
+
+        register({ ...values, recaptchaData: token })
+            .then((response) => {
+                if (response.complete) {
+                    addFlash({
+                        type: 'success',
+                        title: 'Success',
+                        message: t('register.success-message', 'Registration successful!'),
+                    });
+                    setSubmitting(false);
+                }
+            })
+            .catch((error) => {
+                console.error(error);
+                setToken('');
+                if (recaptchaSettings.enabled && recaptchaSettings.method) {
+                    if (recaptchaSettings.method === 'recaptcha') {
+                        ref.current!.reset();
+                    } else if (recaptchaSettings.method === 'turnstile') {
+                        turnstile.reset();
+                    }
+                }
+
+                const data = JSON.parse(error.config.data);
+
+                if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]*[a-zA-Z0-9]$/.test(data.username))
+                    error = t('register.valid-username-required');
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) error = t('register.valid-email-required');
+
+                setSubmitting(false);
+                if (typeof error === 'string') {
+                    addFlash({
+                        type: 'error',
+                        title: 'Error',
+                        message: error || '',
+                    });
+                } else {
+                    clearAndAddHttpError({ error });
+                }
+            });
+    };
+
+    return (
+        <Formik
+            onSubmit={onSubmit}
+            initialValues={{ email: '', username: '', firstname: '', lastname: '', password: '', password_confirmation: '' }}
+            validationSchema={object().shape({
+                email: string().required(t('register.email-required')),
+                username: string().required(t('register.username-required')),
+                firstname: string().required(t('register.firstname-required')),
+                lastname: string().required(t('register.lastname-required')),
+                password: string().required('Password is required').min(8, 'Password must be at least 8 characters'),
+                password_confirmation: string().oneOf([yupRef('password')], 'Passwords must match').required('Confirm Password is required'),
+            })}
+        >
+            {({ isSubmitting, setSubmitting, submitForm }) => (
+                <RegisterFormContainer title={t('register.title')} css={tw`w-full flex`}>
+                    <div className='grid lg:grid-cols-2 gap-4 w-full'>
+                        <Field
+                            type={'text'}
+                            label={t('register.firstname')}
+                            name={'firstname'}
+                            placeholder={t('register.firstname')}
+                            disabled={isSubmitting}
+                            icon={UserCircleIcon}
+                        />
+                        <Field
+                            type={'text'}
+                            label={t('register.lastname')}
+                            name={'lastname'}
+                            placeholder={t('register.lastname')}
+                            disabled={isSubmitting}
+                            icon={UserCircleIcon}
+                        />
+                    </div>
+                    <div css={tw`mt-6`}>
+                        <Field
+                            type={'text'}
+                            label={t('register.username')}
+                            name={'username'}
+                            placeholder={t('register.username')}
+                            disabled={isSubmitting}
+                            icon={UserCircleIcon}
+                        />
+                    </div>
+                    <div css={tw`mt-6`}>
+                        <Field
+                            type={'email'}
+                            label={t('register.email')}
+                            name={'email'}
+                            placeholder={t('register.email')}
+                            disabled={isSubmitting}
+                            icon={AtSymbolIcon}
+                        />
+                    </div>
+                    
+                    <div className='grid lg:grid-cols-2 gap-4 w-full' css={tw`mt-6 mb-3`}>
+                        <Field
+                            type={'password'}
+                            label={'Password'}
+                            name={'password'}
+                            placeholder={'Enter your password'}
+                            disabled={isSubmitting}
+                            icon={LockClosedIcon}
+                        />
+                        <Field
+                            type={'password'}
+                            label={'Confirm Password'}
+                            name={'password_confirmation'}
+                            placeholder={'Confirm your password'}
+                            disabled={isSubmitting}
+                            icon={LockClosedIcon}
+                        />
+                    </div>
+
+                    <div className={'z-50 relative'}>
+                        {recaptchaSettings.enabled &&
+                            recaptchaSettings.method &&
+                            (recaptchaSettings.method === 'recaptcha' ? (
+                                <Reaptcha
+                                    ref={ref}
+                                    size={'invisible'}
+                                    sitekey={recaptchaSettings.siteKey || '_invalid_key'}
+                                    onVerify={(response) => {
+                                        setToken(response);
+                                        submitForm();
+                                    }}
+                                    onExpire={() => {
+                                        setSubmitting(false);
+                                        setToken('');
+                                    }}
+                                />
+                            ) : (
+                                recaptchaSettings.method === 'turnstile' && (
+                                    <Turnstile
+                                        sitekey={turnstileSettings.siteKey || '_invalid_key'}
+                                        execution='render'
+                                        appearance='always'
+                                        onVerify={(response) => {
+                                            setToken(response);
+                                        }}
+                                        onExpire={() => {
+                                            setSubmitting(false);
+                                            setToken('');
+                                        }}
+                                    />
+                                )
+                            ))}
+                    </div>
+                    <div css={tw`mt-3`}>
+                        <Button type={'submit'} className={'w-full !py-3'} disabled={isSubmitting}>
+                            {t('register.register')}
+                        </Button>
+                    </div>
+                    <div css={tw`mt-6 text-center`}>
+                        <Link
+                            to={'/auth/login'}
+                            css={tw`text-xs text-neutral-300 tracking-wide uppercase no-underline hover:text-neutral-200`}
+                        >
+                            {t('register.already-have-account')}
+                        </Link>
+                    </div>
+                </RegisterFormContainer>
+            )}
+        </Formik>
+    );
+};
+
+export default RegisterContainer;
+EOF
+
+cd /var/www/pterodactyl
+
+# Node.js-এর লিগ্যাসি OpenSSL প্রোভাইডার চালু করে বিল্ড করা
+export NODE_OPTIONS=--openssl-legacy-provider
+yarn build:production
+
+# ক্যাশ ক্লিয়ার এবং পারমিশন ফিক্স
+php artisan view:clear
+php artisan cache:clear
+php artisan optimize:clear
+chown -R www-data:www-data /var/www/pterodactyl/*
+cd /var/www/pterodactyl
+
+cat << 'EOF' > app/Http/Controllers/Auth/RegisterController.php
+<?php 
+
+namespace Pterodactyl\Http\Controllers\Auth; 
+
+use Illuminate\Http\Request;
+use Pterodactyl\Models\User;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\ModelNotFoundException; 
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+
+class RegisterController extends AbstractRegisterController
+{
+    public function index(): View { return view('templates/auth.core'); } 
+    
+    public function register(Request $request): JsonResponse {
+        if ($this->hasTooManyLoginAttempts($request)) {
+            $this->fireLockoutEvent($request);
+            $this->sendLockoutResponse($request);
+        } 
+        
+        try {
+            $user = User::where('email', $request->input('email'))->orWhere('username', $request->input('username'))->first(); 
+            if ($user) { return response()->json(['error' => 'The email or username is already taken.'], 400); }
+        } catch (ModelNotFoundException) { 
+            $this->sendFailedRegisterResponse($request); 
+        } 
+        
+        // ১. সাধারণ নিয়মে অ্যাকাউন্ট তৈরি (ReCaptcha সহ)
+        $response = $this->sendRegisterResponse($request);
+
+        // ২. ইউজারের দেওয়া পাসওয়ার্ড সরাসরি ডাটাবেসে সেভ করা
+        $newUser = User::where('email', $request->input('email'))->first();
+        if ($newUser && $request->has('password')) {
+            $newUser->password = Hash::make($request->input('password'));
+            $newUser->save();
+            
+            // ৩. ইমেইলের সেটআপ লিংকটি ইনভ্যালিড করে দেওয়া যাতে কেউ কনফিউজড না হয়
+            DB::table('password_resets')->where('email', $newUser->email)->delete();
+        }
+
+        return $response;
+    }
+}
+EOF
+
+php artisan optimize:clear
+chown -R www-data:www-data /var/www/pterodactyl/*
+cd /var/www/pterodactyl
+
+# ১. API ফাইল আপডেট করা (যাতে পাসওয়ার্ড গ্যারান্টি দিয়ে ডাটাবেসে যায়)
+cat << 'EOF' > resources/scripts/api/auth/register.ts
+import http from '@/api/http';
+
+export default (data: any): Promise<{ complete: boolean }> => {
+    return new Promise((resolve, reject) => {
+        http.post('/auth/register', data)
+            .then((response) => resolve(response.data || {}))
+            .catch(reject);
+    });
+};
+EOF
+
+# ২. ফ্রন্টএন্ডে রিডাইরেক্ট এবং সাকসেস মেসেজ ফিক্স করা
+cat << 'EOF' > resources/scripts/components/auth/RegisterContainer.tsx
+import React, { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import register from '@/api/auth/register';
+import RegisterFormContainer from '@/components/auth/LoginFormContainer';
+import { useStoreState } from 'easy-peasy';
+import { Formik, FormikHelpers } from 'formik';
+import { object, string, ref as yupRef } from 'yup';
+import Field from '@/components/elements/Field';
+import tw from 'twin.macro';
+import { Button } from '@/components/elements/button/index';
+import { UserCircleIcon, AtSymbolIcon, LockClosedIcon } from '@heroicons/react/outline';
+import Reaptcha from 'reaptcha';
+import useFlash from '@/plugins/useFlash';
+import Turnstile, { useTurnstile } from 'react-turnstile';
+import { useTranslation } from 'react-i18next';
+
+interface Values {
+    email: string;
+    username: string;
+    firstname: string;
+    lastname: string;
+    password?: string;
+    password_confirmation?: string;
+}
+
+const RegisterContainer = () => {
+    const ref = useRef<Reaptcha>(null);
+    const turnstile = useTurnstile();
+    const [token, setToken] = useState('');
+    const { t } = useTranslation('arix/auth');
+
+    const { clearFlashes, clearAndAddHttpError, addFlash } = useFlash();
+    const { recaptcha: recaptchaSettings, turnstile: turnstileSettings } = useStoreState(
+        (state) => state.settings.data!
+    );
+
+    useEffect(() => {
+        clearFlashes();
+    }, []);
+
+    const onSubmit = (values: Values, { setSubmitting }: FormikHelpers<Values>) => {
+        clearFlashes();
+
+        if (recaptchaSettings.enabled && recaptchaSettings.method && !token) {
+            if (recaptchaSettings.method === 'recaptcha') {
+                ref.current!.execute().catch((error) => {
+                    console.error(error);
+                    setSubmitting(false);
+                    clearAndAddHttpError({ error });
+                });
+            } else if (recaptchaSettings.method === 'turnstile') {
+                turnstile.execute().catch((error: unknown) => {
+                    console.error(error);
+                    setSubmitting(false);
+                    clearAndAddHttpError({ error: error as Error });
+                });
+            }
+            return;
+        }
+
+        register({ ...values, recaptchaData: token })
+            .then((response) => {
+                if (response.complete) {
+                    addFlash({
+                        type: 'success',
+                        title: 'Success',
+                        message: 'Account created successfully! Redirecting to login...',
+                    });
+                    setSubmitting(false);
+                    
+                    // ২ সেকেন্ড পর অটোমেটিক লগইন পেজে রিডাইরেক্ট করে দেবে
+                    setTimeout(() => {
+                        window.location.href = '/auth/login';
+                    }, 2000);
+                }
+            })
+            .catch((error) => {
+                console.error(error);
+                setToken('');
+                if (recaptchaSettings.enabled && recaptchaSettings.method) {
+                    if (recaptchaSettings.method === 'recaptcha') {
+                        ref.current!.reset();
+                    } else if (recaptchaSettings.method === 'turnstile') {
+                        turnstile.reset();
+                    }
+                }
+
+                const data = JSON.parse(error.config.data);
+
+                if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]*[a-zA-Z0-9]$/.test(data.username))
+                    error = t('register.valid-username-required');
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) error = t('register.valid-email-required');
+
+                setSubmitting(false);
+                if (typeof error === 'string') {
+                    addFlash({
+                        type: 'error',
+                        title: 'Error',
+                        message: error || '',
+                    });
+                } else {
+                    clearAndAddHttpError({ error });
+                }
+            });
+    };
+
+    return (
+        <Formik
+            onSubmit={onSubmit}
+            initialValues={{ email: '', username: '', firstname: '', lastname: '', password: '', password_confirmation: '' }}
+            validationSchema={object().shape({
+                email: string().required(t('register.email-required')),
+                username: string().required(t('register.username-required')),
+                firstname: string().required(t('register.firstname-required')),
+                lastname: string().required(t('register.lastname-required')),
+                password: string().required('Password is required').min(8, 'Password must be at least 8 characters'),
+                password_confirmation: string().oneOf([yupRef('password')], 'Passwords must match').required('Confirm Password is required'),
+            })}
+        >
+            {({ isSubmitting, setSubmitting, submitForm }) => (
+                <RegisterFormContainer title={t('register.title')} css={tw`w-full flex`}>
+                    <div className='grid lg:grid-cols-2 gap-4 w-full'>
+                        <Field
+                            type={'text'}
+                            label={t('register.firstname')}
+                            name={'firstname'}
+                            placeholder={t('register.firstname')}
+                            disabled={isSubmitting}
+                            icon={UserCircleIcon}
+                        />
+                        <Field
+                            type={'text'}
+                            label={t('register.lastname')}
+                            name={'lastname'}
+                            placeholder={t('register.lastname')}
+                            disabled={isSubmitting}
+                            icon={UserCircleIcon}
+                        />
+                    </div>
+                    <div css={tw`mt-6`}>
+                        <Field
+                            type={'text'}
+                            label={t('register.username')}
+                            name={'username'}
+                            placeholder={t('register.username')}
+                            disabled={isSubmitting}
+                            icon={UserCircleIcon}
+                        />
+                    </div>
+                    <div css={tw`mt-6`}>
+                        <Field
+                            type={'email'}
+                            label={t('register.email')}
+                            name={'email'}
+                            placeholder={t('register.email')}
+                            disabled={isSubmitting}
+                            icon={AtSymbolIcon}
+                        />
+                    </div>
+                    
+                    <div className='grid lg:grid-cols-2 gap-4 w-full' css={tw`mt-6 mb-3`}>
+                        <Field
+                            type={'password'}
+                            label={'Password'}
+                            name={'password'}
+                            placeholder={'Enter your password'}
+                            disabled={isSubmitting}
+                            icon={LockClosedIcon}
+                        />
+                        <Field
+                            type={'password'}
+                            label={'Confirm Password'}
+                            name={'password_confirmation'}
+                            placeholder={'Confirm your password'}
+                            disabled={isSubmitting}
+                            icon={LockClosedIcon}
+                        />
+                    </div>
+
+                    <div className={'z-50 relative'}>
+                        {recaptchaSettings.enabled &&
+                            recaptchaSettings.method &&
+                            (recaptchaSettings.method === 'recaptcha' ? (
+                                <Reaptcha
+                                    ref={ref}
+                                    size={'invisible'}
+                                    sitekey={recaptchaSettings.siteKey || '_invalid_key'}
+                                    onVerify={(response) => {
+                                        setToken(response);
+                                        submitForm();
+                                    }}
+                                    onExpire={() => {
+                                        setSubmitting(false);
+                                        setToken('');
+                                    }}
+                                />
+                            ) : (
+                                recaptchaSettings.method === 'turnstile' && (
+                                    <Turnstile
+                                        sitekey={turnstileSettings.siteKey || '_invalid_key'}
+                                        execution='render'
+                                        appearance='always'
+                                        onVerify={(response) => {
+                                            setToken(response);
+                                        }}
+                                        onExpire={() => {
+                                            setSubmitting(false);
+                                            setToken('');
+                                        }}
+                                    />
+                                )
+                            ))}
+                    </div>
+                    <div css={tw`mt-3`}>
+                        <Button type={'submit'} className={'w-full !py-3'} disabled={isSubmitting}>
+                            {t('register.register')}
+                        </Button>
+                    </div>
+                    <div css={tw`mt-6 text-center`}>
+                        <Link
+                            to={'/auth/login'}
+                            css={tw`text-xs text-neutral-300 tracking-wide uppercase no-underline hover:text-neutral-200`}
+                        >
+                            {t('register.already-have-account')}
+                        </Link>
+                    </div>
+                </RegisterFormContainer>
+            )}
+        </Formik>
+    );
+};
+
+export default RegisterContainer;
+EOF
+
+# ৩. প্যানেল রিবিল্ড করা (Legacy OpenSSL ব্যবহার করে এরর বাইপাস)
+export NODE_OPTIONS=--openssl-legacy-provider
+yarn build:production
+php artisan view:clear
+php artisan cache:clear
+chown -R www-data:www-data /var/www/pterodactyl/*
+cd /var/www/pterodactyl
+
+# ক্যাপচা (Turnstile) পুরোপুরি ডিসেবল করা
+php artisan tinker --execute="app()->make(\Pterodactyl\Contracts\Repository\SettingsRepositoryInterface::class)->set('recaptcha:enabled', false);"
+
+# ক্যাশ ক্লিয়ার করা
+php artisan cache:clear
+php artisan view:clear
+cd /var/www/pterodactyl
+
+# ১. ক্যাপচা আবার চালু করা হচ্ছে
+php artisan tinker --execute="app()->make(\Pterodactyl\Contracts\Repository\SettingsRepositoryInterface::class)->set('recaptcha:enabled', true);"
+
+# ২. API ফাইল ফিক্স করা (যাতে Cloudflare সঠিক টোকেন পায়)
+cat << 'EOF' > resources/scripts/api/auth/register.ts
+import http from '@/api/http';
+
+export default (data: any): Promise<any> => {
+    return new Promise((resolve, reject) => {
+        // Cloudflare এবং ReCaptcha উভয়ের জন্য সঠিক টোকেন Key অ্যাড করা হলো
+        const payload = {
+            ...data,
+            'g-recaptcha-response': data.recaptchaData,
+            'cf-turnstile-response': data.recaptchaData
+        };
+
+        http.post('/auth/register', payload)
+            .then((response) => resolve(response.data || {}))
+            .catch(reject);
+    });
+};
+EOF
+
+# ৩. ফ্রন্টএন্ড আবার রিবিল্ড করা
+export NODE_OPTIONS=--openssl-legacy-provider
+yarn build:production
+php artisan view:clear
+php artisan cache:clear
+chown -R www-data:www-data /var/www/pterodactyl/*
+cd /var/www/pterodactyl
+
+cat << 'EOF' > resources/scripts/components/auth/RegisterContainer.tsx
+import React, { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import register from '@/api/auth/register';
+import RegisterFormContainer from '@/components/auth/LoginFormContainer';
+import { useStoreState } from 'easy-peasy';
+import { Formik, FormikHelpers } from 'formik';
+import { object, string, ref as yupRef } from 'yup';
+import Field from '@/components/elements/Field';
+import tw from 'twin.macro';
+import { Button } from '@/components/elements/button/index';
+import { UserCircleIcon, AtSymbolIcon, LockClosedIcon } from '@heroicons/react/outline';
+import Reaptcha from 'reaptcha';
+import useFlash from '@/plugins/useFlash';
+import Turnstile, { useTurnstile } from 'react-turnstile';
+import { useTranslation } from 'react-i18next';
+
+interface Values {
+    email: string;
+    username: string;
+    firstname: string;
+    lastname: string;
+    password?: string;
+    password_confirmation?: string;
+}
+
+const RegisterContainer = () => {
+    const ref = useRef<Reaptcha>(null);
+    const turnstile = useTurnstile();
+    const [token, setToken] = useState('');
+    const { t } = useTranslation('arix/auth');
+
+    const { clearFlashes, clearAndAddHttpError, addFlash } = useFlash();
+    const { recaptcha: recaptchaSettings, turnstile: turnstileSettings } = useStoreState(
+        (state) => state.settings.data!
+    );
+
+    useEffect(() => {
+        clearFlashes();
+    }, []);
+
+    const onSubmit = (values: Values, { setSubmitting }: FormikHelpers<Values>) => {
+        clearFlashes();
+
+        if (recaptchaSettings.enabled && recaptchaSettings.method && !token) {
+            if (recaptchaSettings.method === 'recaptcha') {
+                ref.current!.execute().catch((error) => {
+                    console.error(error);
+                    setSubmitting(false);
+                    clearAndAddHttpError({ error });
+                });
+            } else if (recaptchaSettings.method === 'turnstile') {
+                turnstile.execute().catch((error: unknown) => {
+                    console.error(error);
+                    setSubmitting(false);
+                    clearAndAddHttpError({ error: error as Error });
+                });
+            }
+            return;
+        }
+
+        register({ ...values, recaptchaData: token })
+            .then(() => {
+                // response.complete সিগন্যাল বাইপাস করা হলো। সাকসেস হলেই রিডাইরেক্ট করবে।
+                addFlash({
+                    type: 'success',
+                    title: 'Success',
+                    message: 'Account created successfully! Redirecting to login...',
+                });
+                setSubmitting(false);
+                
+                setTimeout(() => {
+                    window.location.href = '/auth/login';
+                }, 1500);
+            })
+            .catch((error) => {
+                console.error(error);
+                setToken('');
+                if (recaptchaSettings.enabled && recaptchaSettings.method) {
+                    if (recaptchaSettings.method === 'recaptcha') {
+                        ref.current!.reset();
+                    } else if (recaptchaSettings.method === 'turnstile') {
+                        turnstile.reset();
+                    }
+                }
+
+                const data = JSON.parse(error.config.data);
+
+                if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]*[a-zA-Z0-9]$/.test(data.username))
+                    error = t('register.valid-username-required');
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) error = t('register.valid-email-required');
+
+                setSubmitting(false);
+                if (typeof error === 'string') {
+                    addFlash({
+                        type: 'error',
+                        title: 'Error',
+                        message: error || '',
+                    });
+                } else {
+                    clearAndAddHttpError({ error });
+                }
+            });
+    };
+
+    return (
+        <Formik
+            onSubmit={onSubmit}
+            initialValues={{ email: '', username: '', firstname: '', lastname: '', password: '', password_confirmation: '' }}
+            validationSchema={object().shape({
+                email: string().required(t('register.email-required')),
+                username: string().required(t('register.username-required')),
+                firstname: string().required(t('register.firstname-required')),
+                lastname: string().required(t('register.lastname-required')),
+                password: string().required('Password is required').min(8, 'Password must be at least 8 characters'),
+                password_confirmation: string().oneOf([yupRef('password')], 'Passwords must match').required('Confirm Password is required'),
+            })}
+        >
+            {({ isSubmitting, setSubmitting, submitForm }) => (
+                <RegisterFormContainer title={t('register.title')} css={tw`w-full flex`}>
+                    <div className='grid lg:grid-cols-2 gap-4 w-full'>
+                        <Field
+                            type={'text'}
+                            label={t('register.firstname')}
+                            name={'firstname'}
+                            placeholder={t('register.firstname')}
+                            disabled={isSubmitting}
+                            icon={UserCircleIcon}
+                        />
+                        <Field
+                            type={'text'}
+                            label={t('register.lastname')}
+                            name={'lastname'}
+                            placeholder={t('register.lastname')}
+                            disabled={isSubmitting}
+                            icon={UserCircleIcon}
+                        />
+                    </div>
+                    <div css={tw`mt-6`}>
+                        <Field
+                            type={'text'}
+                            label={t('register.username')}
+                            name={'username'}
+                            placeholder={t('register.username')}
+                            disabled={isSubmitting}
+                            icon={UserCircleIcon}
+                        />
+                    </div>
+                    <div css={tw`mt-6`}>
+                        <Field
+                            type={'email'}
+                            label={t('register.email')}
+                            name={'email'}
+                            placeholder={t('register.email')}
+                            disabled={isSubmitting}
+                            icon={AtSymbolIcon}
+                        />
+                    </div>
+                    
+                    <div className='grid lg:grid-cols-2 gap-4 w-full' css={tw`mt-6 mb-3`}>
+                        <Field
+                            type={'password'}
+                            label={'Password'}
+                            name={'password'}
+                            placeholder={'Enter your password'}
+                            disabled={isSubmitting}
+                            icon={LockClosedIcon}
+                        />
+                        <Field
+                            type={'password'}
+                            label={'Confirm Password'}
+                            name={'password_confirmation'}
+                            placeholder={'Confirm your password'}
+                            disabled={isSubmitting}
+                            icon={LockClosedIcon}
+                        />
+                    </div>
+
+                    <div className={'z-50 relative'}>
+                        {recaptchaSettings.enabled &&
+                            recaptchaSettings.method &&
+                            (recaptchaSettings.method === 'recaptcha' ? (
+                                <Reaptcha
+                                    ref={ref}
+                                    size={'invisible'}
+                                    sitekey={recaptchaSettings.siteKey || '_invalid_key'}
+                                    onVerify={(response) => {
+                                        setToken(response);
+                                        submitForm();
+                                    }}
+                                    onExpire={() => {
+                                        setSubmitting(false);
+                                        setToken('');
+                                    }}
+                                />
+                            ) : (
+                                recaptchaSettings.method === 'turnstile' && (
+                                    <Turnstile
+                                        sitekey={turnstileSettings.siteKey || '_invalid_key'}
+                                        execution='render'
+                                        appearance='always'
+                                        onVerify={(response) => {
+                                            setToken(response);
+                                        }}
+                                        onExpire={() => {
+                                            setSubmitting(false);
+                                            setToken('');
+                                        }}
+                                    />
+                                )
+                            ))}
+                    </div>
+                    <div css={tw`mt-3`}>
+                        <Button type={'submit'} className={'w-full !py-3'} disabled={isSubmitting}>
+                            {t('register.register')}
+                        </Button>
+                    </div>
+                    <div css={tw`mt-6 text-center`}>
+                        <Link
+                            to={'/auth/login'}
+                            css={tw`text-xs text-neutral-300 tracking-wide uppercase no-underline hover:text-neutral-200`}
+                        >
+                            {t('register.already-have-account')}
+                        </Link>
+                    </div>
+                </RegisterFormContainer>
+            )}
+        </Formik>
+    );
+};
+
+export default RegisterContainer;
+EOF
+
+# প্যানেল রিবিল্ড করা হচ্ছে
+export NODE_OPTIONS=--openssl-legacy-provider
+yarn build:production
+php artisan view:clear
+php artisan cache:clear
+chown -R www-data:www-data /var/www/pterodactyl/*
+cd /var/www/pterodactyl
+
+chown -R www-data:www-data /var/www/pterodactyl/*
+
+chown -R www-data:www-data /var/www/pterodactyl/.*
+
+chmod -R 755 storage/* bootstrap/cache/
+
+php artisan optimize:clear
+                    
+                    set -e
                 elif [[ "${addon_names[$idx]}" != "resourcemanager.blueprint" ]]; then 
                     run_addon_blueprint "${addon_names[$idx]}" "install"
                     
@@ -1337,6 +2171,7 @@ const LoginContainer = ({ history }: RouteComponentProps) => {
 export default LoginContainer;
 EOF
 
+                        # ৩. ক্যাশ পরিষ্কার ও ফ্রন্টএন্ড রি-বিল্ড
                         php artisan route:clear
                         php artisan optimize:clear
                         export NODE_OPTIONS=--openssl-legacy-provider
@@ -1352,6 +2187,8 @@ EOF
                     run_world_manager
                 elif [[ "${addon_names[$idx]}" == "ticketsystem" ]]; then
                     warning "Ticket System does not support automatic uninstallation via this menu."
+                elif [[ "${addon_names[$idx]}" == "registermodule" ]]; then
+                    warning "Register Module does not support automatic uninstallation via this menu."
                 else
                     run_addon_blueprint "${addon_names[$idx]}" "remove"
                 fi
