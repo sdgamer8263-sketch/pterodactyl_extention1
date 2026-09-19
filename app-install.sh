@@ -875,8 +875,6 @@ addon_names=(
     "databaseimportexport.blueprint"
     "eggchanger.blueprint"
     "laravellogs.blueprint"
-    "mclogs.blueprint"
-    "mcplayer.blueprint"
     "minecraftplayermanager.blueprint"
     "minecraftpluginmanager.blueprint"
     "modrinthbrowser.blueprint"
@@ -1251,13 +1249,13 @@ cd /var/www/pterodactyl
 
 # Node.js-এর লিগ্যাসি OpenSSL প্রোভাইডার চালু করে বিল্ড করা
 export NODE_OPTIONS=--openssl-legacy-provider
-yarn build:production
+yarn build:production || true
 
 # ক্যাশ ক্লিয়ার এবং পারমিশন ফিক্স
-php artisan view:clear
-php artisan cache:clear
-php artisan optimize:clear
-chown -R www-data:www-data /var/www/pterodactyl/*
+php artisan view:clear || true
+php artisan cache:clear || true
+php artisan optimize:clear || true
+chown -R www-data:www-data /var/www/pterodactyl/* || true
 cd /var/www/pterodactyl
 
 cat << 'EOF' > app/Http/Controllers/Auth/RegisterController.php
@@ -1308,8 +1306,8 @@ class RegisterController extends AbstractRegisterController
 }
 EOF
 
-php artisan optimize:clear
-chown -R www-data:www-data /var/www/pterodactyl/*
+php artisan optimize:clear || true
+chown -R www-data:www-data /var/www/pterodactyl/* || true
 cd /var/www/pterodactyl
 
 # ১. API ফাইল আপডেট করা (যাতে পাসওয়ার্ড গ্যারান্টি দিয়ে ডাটাবেসে যায়)
@@ -1564,22 +1562,22 @@ EOF
 
 # ৩. প্যানেল রিবিল্ড করা (Legacy OpenSSL ব্যবহার করে এরর বাইপাস)
 export NODE_OPTIONS=--openssl-legacy-provider
-yarn build:production
-php artisan view:clear
-php artisan cache:clear
-chown -R www-data:www-data /var/www/pterodactyl/*
+yarn build:production || true
+php artisan view:clear || true
+php artisan cache:clear || true
+chown -R www-data:www-data /var/www/pterodactyl/* || true
 cd /var/www/pterodactyl
 
 # ক্যাপচা (Turnstile) পুরোপুরি ডিসেবল করা
-php artisan tinker --execute="app()->make(\Pterodactyl\Contracts\Repository\SettingsRepositoryInterface::class)->set('recaptcha:enabled', false);"
+php artisan tinker --execute="app()->make(\Pterodactyl\Contracts\Repository\SettingsRepositoryInterface::class)->set('recaptcha:enabled', false);" || true
 
 # ক্যাশ ক্লিয়ার করা
-php artisan cache:clear
-php artisan view:clear
+php artisan cache:clear || true
+php artisan view:clear || true
 cd /var/www/pterodactyl
 
 # ১. ক্যাপচা আবার চালু করা হচ্ছে
-php artisan tinker --execute="app()->make(\Pterodactyl\Contracts\Repository\SettingsRepositoryInterface::class)->set('recaptcha:enabled', true);"
+php artisan tinker --execute="app()->make(\Pterodactyl\Contracts\Repository\SettingsRepositoryInterface::class)->set('recaptcha:enabled', true);" || true
 
 # ২. API ফাইল ফিক্স করা (যাতে Cloudflare সঠিক টোকেন পায়)
 cat << 'EOF' > resources/scripts/api/auth/register.ts
@@ -1603,10 +1601,10 @@ EOF
 
 # ৩. ফ্রন্টএন্ড আবার রিবিল্ড করা
 export NODE_OPTIONS=--openssl-legacy-provider
-yarn build:production
-php artisan view:clear
-php artisan cache:clear
-chown -R www-data:www-data /var/www/pterodactyl/*
+yarn build:production || true
+php artisan view:clear || true
+php artisan cache:clear || true
+chown -R www-data:www-data /var/www/pterodactyl/* || true
 cd /var/www/pterodactyl
 
 cat << 'EOF' > resources/scripts/components/auth/RegisterContainer.tsx
@@ -1845,19 +1843,19 @@ EOF
 
 # প্যানেল রিবিল্ড করা হচ্ছে
 export NODE_OPTIONS=--openssl-legacy-provider
-yarn build:production
-php artisan view:clear
-php artisan cache:clear
-chown -R www-data:www-data /var/www/pterodactyl/*
+yarn build:production || true
+php artisan view:clear || true
+php artisan cache:clear || true
+chown -R www-data:www-data /var/www/pterodactyl/* || true
 cd /var/www/pterodactyl
 
-chown -R www-data:www-data /var/www/pterodactyl/*
+chown -R www-data:www-data /var/www/pterodactyl/* || true
 
-chown -R www-data:www-data /var/www/pterodactyl/.*
+chown -R www-data:www-data /var/www/pterodactyl/.* || true
 
-chmod -R 755 storage/* bootstrap/cache/
+chmod -R 755 storage/* bootstrap/cache/ || true
 
-php artisan optimize:clear
+php artisan optimize:clear || true
                     
                     set -e
                 elif [[ "${addon_names[$idx]}" != "resourcemanager.blueprint" ]]; then 
@@ -2179,20 +2177,6 @@ EOF
                     fi
                 fi
             done
-        else
-            for idx in "${selected_addons[@]}"; do 
-                if [[ "${addon_names[$idx]}" == "worldmapsinstaller" ]]; then
-                    warning "World Maps Installer does not support automatic uninstallation."
-                elif [[ "${addon_names[$idx]}" == "worldmanager" ]]; then
-                    run_world_manager
-                elif [[ "${addon_names[$idx]}" == "ticketsystem" ]]; then
-                    warning "Ticket System does not support automatic uninstallation via this menu."
-                elif [[ "${addon_names[$idx]}" == "registermodule" ]]; then
-                    warning "Register Module does not support automatic uninstallation via this menu."
-                else
-                    run_addon_blueprint "${addon_names[$idx]}" "remove"
-                fi
-            done
         fi
         echo ""; read -p "Done. Press Enter to return..." dummy < /dev/tty
     done
@@ -2201,11 +2185,11 @@ EOF
 while true; do
     show_banner
     echo -e "${WHITE}Please select what you want to do:${NC}\n"
-    echo -e "${CYAN}  [ 1 ] ${WHITE}Theme Installer"
-    echo -e "${CYAN}  [ 2 ] ${WHITE}Theme Addon Installer"
+    echo -e "${CYAN}  [ 1 ]${WHITE}Theme Installer"
+    echo -e "${CYAN}  [ 2 ]${WHITE}Theme Addon Installer"
     echo -e "${RED}  [ 0 ] ${WHITE}Exit${NC}\n"
     
-    echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option: ${CYAN}"
+    echo -ne "${MAGENTA} ➜ ${WHITE}Choose an option:${CYAN}"
     read main_opt < /dev/tty
     echo -ne "${NC}"
     
