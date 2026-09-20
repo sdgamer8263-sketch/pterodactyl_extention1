@@ -63,7 +63,6 @@ class AiSettingsController extends Controller
         $this->settings->set('settings::ai:custom_css', $request->input('custom_css', ''));
         $this->settings->set('settings::ai:ui_theme', $request->input('ui_theme', 'cyberpunk'));
 
-        // Handle Background Image
         $bgUrl = $request->input('bg_url', '');
         if ($request->hasFile('bg_file')) {
             $file = $request->file('bg_file');
@@ -73,7 +72,6 @@ class AiSettingsController extends Controller
         }
         $this->settings->set('settings::ai:bg_url', $bgUrl);
 
-        // Handle Logo Image
         $logoUrl = $request->input('logo_url', '');
         if ($request->hasFile('logo_file')) {
             $file = $request->file('logo_file');
@@ -83,7 +81,7 @@ class AiSettingsController extends Controller
         }
         $this->settings->set('settings::ai:logo_url', $logoUrl);
 
-        $this->alert->success('AI settings, Logo, and Custom CSS updated successfully!')->flash();
+        $this->alert->success('AI settings and Custom CSS updated successfully!')->flash();
         return redirect()->route('admin.ai');
     }
 }
@@ -503,9 +501,51 @@ uninstall_widget() {
     echo -e "${RED}=== Uninstalling Vizion AI Widget ===${NC}"
     cd /var/www/pterodactyl || { echo -e "${RED}Pterodactyl directory not found!${NC}"; exit 1; }
 
-    rm -f app/Http/Controllers/Admin/AiSettingsController.php
-    rm -rf resources/views/admin/ai
-    rm -f resources/scripts/components/AiChatWidget.tsx
+    echo "[+] Disabling Frontend Widget..."
+    cat << 'EOF' > resources/scripts/components/AiChatWidget.tsx
+import React from 'react';
+export default () => null;
+EOF
+
+    echo "[+] Restoring basic Admin Controller to prevent 500 errors..."
+    cat << 'EOF' > app/Http/Controllers/Admin/AiSettingsController.php
+<?php
+namespace Pterodactyl\Http\Controllers\Admin;
+use Illuminate\View\View;
+use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
+use Pterodactyl\Http\Controllers\Controller;
+
+class AiSettingsController extends Controller
+{
+    public function index(): View {
+        return view('admin.ai.index');
+    }
+    public function update(Request $request): RedirectResponse {
+        return redirect()->route('admin.ai');
+    }
+}
+EOF
+    
+    mkdir -p resources/views/admin/ai
+    cat << 'EOF' > resources/views/admin/ai/index.blade.php
+@extends('layouts.admin')
+@section('title') AI Settings @endsection
+@section('content-header')
+    <h1>AI Settings<small>Status</small></h1>
+    <ol class="breadcrumb"><li><a href="{{ route('admin.index') }}">Admin</a></li><li class="active">AI Settings</li></ol>
+@endsection
+@section('content')
+<div class="row">
+    <div class="col-xs-12">
+        <div class="alert alert-danger">
+            <h4><i class="icon fa fa-ban"></i> Uninstalled!</h4>
+            The Vizion AI Widget has been successfully uninstalled and disabled. You can safely reinstall it anytime using the setup script.
+        </div>
+    </div>
+</div>
+@endsection
+EOF
 
     echo "[+] Removing Wrapper config injection..."
     cat << 'PHP_REMOVE' > remove_config.php
@@ -520,13 +560,17 @@ PHP_REMOVE
     php remove_config.php
     rm -f remove_config.php
 
+    echo "[+] Rebuilding frontend assets (Removing widget from dashboard)..."
+    export NODE_OPTIONS=--openssl-legacy-provider
+    yarn build:production
+
     echo "[+] Clearing caches..."
     php artisan view:clear
     php artisan cache:clear
     php artisan config:clear
     chown -R www-data:www-data /var/www/pterodactyl/*
 
-    echo -e "${GREEN}[✔] Vizion AI Widget successfully uninstalled!${NC}"
+    echo -e "${GREEN}[✔] Vizion AI Widget successfully disabled & uninstalled!${NC}"
 }
 
 while true; do
