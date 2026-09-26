@@ -1,115 +1,116 @@
 #!/bin/bash
 set -e 
 
-API_URL="http://78.154.103.27:13915/api/verify" 
-ADDON_URL="https://github.com/nobita329/Nobita-Cloud/raw/refs/heads/main/thame/Extension"
+main() {
+    API_URL="http://78.154.103.27:13915/api/verify" 
+    ADDON_URL="https://github.com/nobita329/Nobita-Cloud/raw/refs/heads/main/thame/Extension"
 
-RED='\033[1;31m'; GREEN='\033[1;32m'; BLUE='\033[1;34m'; CYAN='\033[1;36m'; MAGENTA='\033[1;35m'; YELLOW='\033[1;33m'; WHITE='\033[1;37m'; NC='\033[0m'
+    RED='\033[1;31m'; GREEN='\033[1;32m'; BLUE='\033[1;34m'; CYAN='\033[1;36m'; MAGENTA='\033[1;35m'; YELLOW='\033[1;33m'; WHITE='\033[1;37m'; NC='\033[0m'
 
-info() { echo -e "${BLUE}[ℹ] ${WHITE}$1${NC}"; }
-success() { echo -e "${GREEN}[✔] ${WHITE}$1${NC}"; }
-warning() { echo -e "${YELLOW}[⚠] ${WHITE}$1${NC}"; }
-error() { echo -e "${RED}[✖] ${WHITE}$1${NC}"; }
+    info() { echo -e "${BLUE}[ℹ] ${WHITE}$1${NC}"; }
+    success() { echo -e "${GREEN}[✔] ${WHITE}$1${NC}"; }
+    warning() { echo -e "${YELLOW}[⚠] ${WHITE}$1${NC}"; }
+    error() { echo -e "${RED}[✖] ${WHITE}$1${NC}"; }
 
-spinner() {
-    local pid=$1
-    local delay=0.1
-    local spinstr='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
-    while [ "$(ps a | awk '{print $1}' | grep -w $pid)" ]; do
-        local temp=${spinstr#?}
-        printf "\r${MAGENTA} [%c] ${WHITE}Working... Please wait${NC}" "$spinstr"
-        local spinstr=$temp${spinstr%"$temp"}
-        sleep $delay
-    done
-    printf "\r\033[K"
-} 
+    spinner() {
+        local pid=$1
+        local delay=0.1
+        local spinstr='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+        while [ "$(ps a | awk '{print $1}' | grep -w $pid)" ]; do
+            local temp=${spinstr#?}
+            printf "\r${MAGENTA} [%c] ${WHITE}Working... Please wait${NC}" "$spinstr"
+            local spinstr=$temp${spinstr%"$temp"}
+            sleep $delay
+        done
+        printf "\r\033[K"
+    } 
 
-typewriter() {
-    local text="$1"
-    local delay=0.015
-    for (( i=0; i<${#text}; i++ )); do
-        echo -ne "${text:$i:1}"
-        sleep $delay
-    done
-    echo ""
-} 
+    typewriter() {
+        local text="$1"
+        local delay=0.015
+        for (( i=0; i<${#text}; i++ )); do
+            echo -ne "${text:$i:1}"
+            sleep $delay
+        done
+        echo ""
+    } 
 
-show_banner() {
-    clear
-    echo -e "${MAGENTA}"
-    echo '    █████╗ ██████╗ ██╗██╗  ██╗'
-    echo '   ██╔══██╗██╔══██╗██║╚██╗██╔╝'
-    echo '   ███████║██████╔╝██║ ╚███╔╝ '
-    echo '   ██╔══██║██╔══██╗██║ ██╔██╗ '
-    echo '   ██║  ██║██║  ██║██║██╔╝ ██╗'
-    echo '   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝'
+    show_banner() {
+        clear
+        echo -e "${MAGENTA}"
+        echo '    █████╗ ██████╗ ██╗██╗  ██╗'
+        echo '   ██╔══██╗██╔══██╗██║╚██╗██╔╝'
+        echo '   ███████║██████╔╝██║ ╚███╔╝ '
+        echo '   ██╔══██║██╔══██╗██║ ██╔██╗ '
+        echo '   ██║  ██║██║  ██║██║██╔╝ ██╗'
+        echo '   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝╚═╝  ╚═╝'
+        echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
+        typewriter "    Add New Features Script (Arix 2.1.0 Blueprint)"
+        echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}\n"
+    } 
+
+    verify_license() {
+        echo -e "${CYAN}┌──────────────────────────────────────────────┐${NC}"
+        echo -e "${CYAN}│${YELLOW}         🔒 SECURITY VERIFICATION REQUIRED    ${CYAN}│${NC}"
+        echo -e "${CYAN}└──────────────────────────────────────────────┘${NC}\n"
+        
+        echo -ne "${MAGENTA} ➜ ${WHITE}Enter your Registered Email: ${CYAN}"
+        read USER_EMAIL < /dev/tty
+        echo -ne "${MAGENTA} ➜ ${WHITE}Enter your License Key: ${CYAN}"
+        read USER_KEY < /dev/tty
+        echo -ne "${NC}" 
+        
+        echo ""
+        info "Establishing secure connection to licensing server..."
+        
+        USER_IP=$(curl -s ifconfig.me)
+        RESPONSE=$(curl -s -X POST "$API_URL" -H "Content-Type: application/json" -d "{\"email\":\"$USER_EMAIL\", \"key\":\"$USER_KEY\", \"ip\":\"$USER_IP\", \"requestedType\":\"blueprint\", \"requestedVersion\":\"2.1.0\"}")
+        
+        if echo "$RESPONSE" | grep -qE '"success":\s*true'; then SUCCESS="true"; else SUCCESS="false"; fi
+        MESSAGE=$(echo "$RESPONSE" | sed -n 's/.*"message"\s*:\s*"\([^"]*\)".*/\1/p')
+        if [ -z "$MESSAGE" ]; then MESSAGE="Invalid response from the licensing server."; fi 
+        
+        if [ "$SUCCESS" != "true" ]; then
+            echo ""
+            error "Authentication Denied: $MESSAGE"
+            exit 1
+        else
+            echo ""
+            success "License Verified! Authorization Granted."
+            sleep 1.5
+        fi
+    }
+
+    check_dependencies() {
+        set +e
+        if ! command -v yarn >/dev/null 2>&1; then error "Yarn is not installed!"; exit 1; fi
+        if ! command -v python3 >/dev/null 2>&1; then error "Python3 is not installed!"; exit 1; fi
+        set -e
+    }
+
+    # Ctrl+C চাপলে ডিফল্ট কাজ (স্ক্রিপ্ট বন্ধ করা)
+    trap 'echo -e "\n\033[1;31m[!] Force exit detected.\033[0m"; exit 1' SIGINT
+
+    show_banner
+    verify_license
+    check_dependencies
+
     echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
-    typewriter "    Add New Features Script (Arix 2.1.0 Blueprint)"
-    echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}\n"
-} 
+    echo -e "${WHITE}           INITIALIZING ADD NEW FEATURES          ${NC}"
+    echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}" 
 
-verify_license() {
-    echo -e "${CYAN}┌──────────────────────────────────────────────┐${NC}"
-    echo -e "${CYAN}│${YELLOW}         🔒 SECURITY VERIFICATION REQUIRED    ${CYAN}│${NC}"
-    echo -e "${CYAN}└──────────────────────────────────────────────┘${NC}\n"
-    
-    echo -ne "${MAGENTA} ➜ ${WHITE}Enter your Registered Email: ${CYAN}"
-    read USER_EMAIL < /dev/tty
-    echo -ne "${MAGENTA} ➜ ${WHITE}Enter your License Key: ${CYAN}"
-    read USER_KEY < /dev/tty
-    echo -ne "${NC}" 
-    
-    echo ""
-    info "Establishing secure connection to licensing server..."
-    
-    USER_IP=$(curl -s ifconfig.me)
-    RESPONSE=$(curl -s -X POST "$API_URL" -H "Content-Type: application/json" -d "{\"email\":\"$USER_EMAIL\", \"key\":\"$USER_KEY\", \"ip\":\"$USER_IP\", \"requestedType\":\"blueprint\", \"requestedVersion\":\"2.1.0\"}")
-    
-    if echo "$RESPONSE" | grep -qE '"success":\s*true'; then SUCCESS="true"; else SUCCESS="false"; fi
-    MESSAGE=$(echo "$RESPONSE" | sed -n 's/.*"message"\s*:\s*"\([^"]*\)".*/\1/p')
-    if [ -z "$MESSAGE" ]; then MESSAGE="Invalid response from the licensing server."; fi 
-    
-    if [ "$SUCCESS" != "true" ]; then
-        echo ""
-        error "Authentication Denied: $MESSAGE"
+    if [ ! -d "/var/www/pterodactyl" ]; then
+        error "Pterodactyl installation not found!"
         exit 1
-    else
-        echo ""
-        success "License Verified! Authorization Granted."
-        sleep 1.5
     fi
-}
+    cd /var/www/pterodactyl 
 
-check_dependencies() {
+    # এখান থেকে set +e চালু করা হলো যাতে কোনো ফাইল খুঁজে না পেলেও স্ক্রিপ্ট ক্র্যাশ না করে, বরং পরপর কমান্ড রান হয়
     set +e
-    if ! command -v yarn >/dev/null 2>&1; then error "Yarn is not installed!"; exit 1; fi
-    if ! command -v python3 >/dev/null 2>&1; then error "Python3 is not installed!"; exit 1; fi
-    set -e
-}
 
-# Ctrl+C চাপলে ডিফল্ট কাজ (স্ক্রিপ্ট বন্ধ করা)
-trap 'echo -e "\n\033[1;31m[!] Force exit detected.\033[0m"; exit 1' SIGINT
+    info "Applying Addon Settings Controllers..."
 
-show_banner
-verify_license
-check_dependencies
-
-echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
-echo -e "${WHITE}           INITIALIZING ADD NEW FEATURES          ${NC}"
-echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}" 
-
-if [ ! -d "/var/www/pterodactyl" ]; then
-    error "Pterodactyl installation not found!"
-    exit 1
-fi
-cd /var/www/pterodactyl 
-
-# এখান থেকে set +e চালু করা হলো যাতে কোনো ফাইল খুঁজে না পেলেও স্ক্রিপ্ট ক্র্যাশ না করে, বরং পরপর কমান্ড রান হয়
-set +e
-
-info "Applying Addon Settings Controllers..."
-
-cat << 'EOF' > app/Http/Controllers/Admin/Arix/ArixController.php
+    cat << 'EOF' > app/Http/Controllers/Admin/Arix/ArixController.php
 <?php
 namespace Pterodactyl\Http\Controllers\Admin\Arix; 
 
@@ -159,7 +160,7 @@ class ArixController extends Controller
 }
 EOF
 
-cat << 'EOF' > resources/scripts/components/admin/addons/AddonsContainer.tsx
+    cat << 'EOF' > resources/scripts/components/admin/addons/AddonsContainer.tsx
 import React, { useEffect, useState } from 'react';
 import { Formik, useFormikContext } from 'formik';
 import EditorWrapper from '../elements/EditorWrapper';
@@ -262,7 +263,7 @@ export default () => {
 };
 EOF
 
-cat << 'EOF' > resources/scripts/routers/RouterElements.tsx
+    cat << 'EOF' > resources/scripts/routers/RouterElements.tsx
 import React, { useEffect, useState, useMemo } from 'react';
 import { ServerContext } from '@/state/server';
 import routes from '@/routers/routes';
@@ -488,21 +489,21 @@ export const ComponentLoader = () => {
 };
 EOF
 
-info "Compiling and optimizing panel... (Please wait)"
-(
-    export NODE_OPTIONS=--openssl-legacy-provider
-    yarn build:production > /dev/null 2>&1
-    php artisan optimize:clear > /dev/null 2>&1
-    php artisan view:clear > /dev/null 2>&1
-) & spinner $!
+    info "Compiling and optimizing panel... (Please wait)"
+    (
+        export NODE_OPTIONS=--openssl-legacy-provider
+        yarn build:production > /dev/null 2>&1
+        php artisan optimize:clear > /dev/null 2>&1
+        php artisan view:clear > /dev/null 2>&1
+    ) & spinner $!
 
-info "Fixing Extension Icons JSON configurations..."
-echo "{}" > public/extension_icons.json
-chmod 777 public/extension_icons.json 2>/dev/null || true
-chown -R www-data:www-data public/extension_icons.json 2>/dev/null || chown -R nginx:nginx public/extension_icons.json 2>/dev/null || true
+    info "Fixing Extension Icons JSON configurations..."
+    echo "{}" > public/extension_icons.json
+    chmod 777 public/extension_icons.json 2>/dev/null || true
+    chown -R www-data:www-data public/extension_icons.json 2>/dev/null || chown -R nginx:nginx public/extension_icons.json 2>/dev/null || true
 
-info "Injecting Extensions Sidebar Button..."
-python3 -c "
+    info "Injecting Extensions Sidebar Button..."
+    python3 -c "
 import re
 path = 'resources/scripts/routers/AdminRouter.tsx'
 try:
@@ -518,21 +519,21 @@ except Exception as e:
     pass
 " || true
 
-info "Rebuilding frontend for Sidebar update... (Please wait)"
-(
-    export NODE_OPTIONS=--openssl-legacy-provider
-    yarn build:production > /dev/null 2>&1
-    php artisan optimize:clear > /dev/null 2>&1
-) & spinner $!
+    info "Rebuilding frontend for Sidebar update... (Please wait)"
+    (
+        export NODE_OPTIONS=--openssl-legacy-provider
+        yarn build:production > /dev/null 2>&1
+        php artisan optimize:clear > /dev/null 2>&1
+    ) & spinner $!
 
-info "Synchronizing icon data with database..."
-touch public/extension_icons.json 2>/dev/null || true
-chmod 777 public/extension_icons.json 2>/dev/null || true
-chown -R www-data:www-data public/extension_icons.json 2>/dev/null || chown -R nginx:nginx public/extension_icons.json 2>/dev/null || true
-php artisan tinker --execute="file_put_contents(public_path('extension_icons.json'), app()->make('Pterodactyl\Contracts\Repository\SettingsRepositoryInterface')->get('settings::arix:general:extension_icons', '{}'));" >/dev/null 2>&1 || true
+    info "Synchronizing icon data with database..."
+    touch public/extension_icons.json 2>/dev/null || true
+    chmod 777 public/extension_icons.json 2>/dev/null || true
+    chown -R www-data:www-data public/extension_icons.json 2>/dev/null || chown -R nginx:nginx public/extension_icons.json 2>/dev/null || true
+    php artisan tinker --execute="file_put_contents(public_path('extension_icons.json'), app()->make('Pterodactyl\Contracts\Repository\SettingsRepositoryInterface')->get('settings::arix:general:extension_icons', '{}'));" >/dev/null 2>&1 || true
 
-info "Updating ArixRequest and ArixController..."
-cat << 'EOF' > app/Http/Requests/Admin/Arix/ArixRequest.php
+    info "Updating ArixRequest and ArixController..."
+    cat << 'EOF' > app/Http/Requests/Admin/Arix/ArixRequest.php
 <?php
 namespace Pterodactyl\Http\Requests\Admin\Arix;
 use Pterodactyl\Http\Requests\Admin\AdminFormRequest; 
@@ -552,7 +553,7 @@ class ArixRequest extends AdminFormRequest {
 }
 EOF
 
-cat << 'EOF' > app/Http/Controllers/Admin/Arix/ArixController.php
+    cat << 'EOF' > app/Http/Controllers/Admin/Arix/ArixController.php
 <?php
 namespace Pterodactyl\Http\Controllers\Admin\Arix; 
 
@@ -599,8 +600,8 @@ class ArixController extends Controller
 }
 EOF
 
-info "Applying Server.php modifications..."
-php -r '
+    info "Applying Server.php modifications..."
+    php -r '
 $file = "app/Models/Server.php";
 if (file_exists($file)) {$content = file_get_contents($file);$content = preg_replace("/\s*public function canBeReinstalled\(\)\s*\{\s*return true;\s*\}/s", "", $content); 
     $pos = strrpos($content, "}");
@@ -611,37 +612,37 @@ if (file_exists($file)) {$content = file_get_contents($file);$content = preg_rep
 }
 ' || true
 
-info "Final cache clearance..."
-php artisan optimize:clear > /dev/null 2>&1
+    info "Final cache clearance..."
+    php artisan optimize:clear > /dev/null 2>&1
 
-# ==========================================
-# SPLITTER INSTALLATION BLOCK (WITH CTRL+C BYPASS)
-# ==========================================
-echo -e "\n\033[1;36mSilently install splitter\033[0m"
-echo -e "\033[1;33mWait for 4 minutes to install it. After 4 minutes if it gets stuck here, then do CTRL + C\033[0m"
+    # ==========================================
+    # SPLITTER INSTALLATION BLOCK (WITH CTRL+C BYPASS)
+    # ==========================================
+    echo -e "\n\033[1;36mSilently install splitter\033[0m"
+    echo -e "\033[1;33mWait for 4 minutes to install it. After 4 minutes if it gets stuck here, then do CTRL + C\033[0m"
 
-cd /var/www/pterodactyl
-if command -v blueprint >/dev/null 2>&1; then
-    wget -q "$ADDON_URL/serversplitter.blueprint" -O "serversplitter.blueprint" || true
-    if [[ -s "serversplitter.blueprint" ]]; then
-        # CTRL+C চাপলে শুধু স্প্লিটার স্কিপ করে Add features এ যাবে
-        trap 'echo -e "\n\033[1;35m[!] CTRL+C pressed. Skipping splitter installation...\033[0m\n\033[1;32mMoving to add features...\033[0m"; kill -9 $PID 2>/dev/null; true' SIGINT
-        
-        yes | blueprint -i "serversplitter.blueprint" > /dev/null 2>&1 &
-        PID=$!
-        wait $PID || true
-        
-        # ডিফল্ট Ctrl+C ফিরিয়ে আনা হলো
-        trap 'echo -e "\n\033[1;31m[!] Force exit detected.\033[0m"; exit 1' SIGINT
-        rm -f "serversplitter.blueprint"
+    cd /var/www/pterodactyl
+    if command -v blueprint >/dev/null 2>&1; then
+        wget -q "$ADDON_URL/serversplitter.blueprint" -O "serversplitter.blueprint" || true
+        if [[ -s "serversplitter.blueprint" ]]; then
+            # CTRL+C চাপলে শুধু স্প্লিটার স্কিপ করে Add features এ যাবে
+            trap 'echo -e "\n\033[1;35m[!] CTRL+C pressed. Skipping splitter installation...\033[0m\n\033[1;32mMoving to add features...\033[0m"; kill -9 $PID 2>/dev/null; true' SIGINT
+            
+            yes | blueprint -i "serversplitter.blueprint" > /dev/null 2>&1 &
+            PID=$!
+            wait $PID || true
+            
+            # ডিফল্ট Ctrl+C ফিরিয়ে আনা হলো
+            trap 'echo -e "\n\033[1;31m[!] Force exit detected.\033[0m"; exit 1' SIGINT
+            rm -f "serversplitter.blueprint"
+        fi
     fi
-fi
-# ==========================================
+    # ==========================================
 
-info "Applying Custom Sorting Logic for Extensions..."
-cd /var/www/pterodactyl 
+    info "Applying Custom Sorting Logic for Extensions..."
+    cd /var/www/pterodactyl 
 
-cat << 'EOF' > resources/scripts/components/admin/addons/AddonsContainer.tsx
+    cat << 'EOF' > resources/scripts/components/admin/addons/AddonsContainer.tsx
 import React, { useEffect, useState } from 'react';
 import { Formik, useFormikContext } from 'formik';
 import EditorWrapper from '../elements/EditorWrapper';
@@ -756,7 +757,7 @@ export default () => {
 };
 EOF
 
-cat << 'EOF' > resources/scripts/routers/RouterElements.tsx
+    cat << 'EOF' > resources/scripts/routers/RouterElements.tsx
 import React, { useEffect, useState, useMemo } from 'react';
 import { ServerContext } from '@/state/server';
 import routes from '@/routers/routes';
@@ -963,11 +964,15 @@ export const ComponentLoader = () => {
 };
 EOF
 
-export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
-yarn build:production
-php artisan view:clear
-php artisan optimize:clear
+    export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
+    yarn build:production
+    php artisan view:clear
+    php artisan optimize:clear
 
-echo -e "\n${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
-typewriter "      🚀 NEW FEATURES APPLIED SUCCESSFULLY! 🚀    "
-echo -e "${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}\n"
+    echo -e "\n${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
+    typewriter "      🚀 NEW FEATURES APPLIED SUCCESSFULLY! 🚀    "
+    echo -e "${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}\n"
+
+}
+
+main "$@"
