@@ -104,33 +104,7 @@ if [ ! -d "/var/www/pterodactyl" ]; then
 fi
 cd /var/www/pterodactyl 
 
-# ==========================================
-# SPLITTER INSTALLATION BLOCK (WITH CTRL+C BYPASS)
-# ==========================================
-echo -e "\n\033[1;36mSilently install splitter\033[0m"
-echo -e "\033[1;33mWait for 4 minutes to install it. After 4 minutes if it gets stuck here, then do CTRL + C\033[0m"
-
-wget -q "https://github.com/nobita329/Nobita-Cloud/raw/refs/heads/main/thame/Extension/serversplitter.blueprint" -O "serversplitter.blueprint" || true
-
-if [[ -s "serversplitter.blueprint" ]]; then
-    set +e
-    # CTRL+C চাপলে শুধু স্প্লিটার ইনস্টলেশন স্কিপ করে অ্যাড ফিচারসে চলে যাবে
-    trap 'echo -e "\n\033[1;35m[!] CTRL+C pressed. Skipping splitter installation... Moving to next step.\033[0m"; kill -9 $PID 2>/dev/null; true' SIGINT
-
-    yes | blueprint -i serversplitter.blueprint > /dev/null 2>&1 &
-    PID=$!
-    wait $PID || true
-
-    # স্প্লিটার ইনস্টল বা স্কিপ হওয়ার পর ডিফল্ট Ctrl+C লজিক আবার ফিরিয়ে আনা হলো
-    trap 'echo -e "\n\033[1;31m[!] Force exit detected.\033[0m"; exit 1' SIGINT
-    set -e
-    rm -f "serversplitter.blueprint"
-fi
-
-echo -e "\n\033[1;32mMoving to add features...\033[0m\n"
-# ==========================================
-
-# এখান থেকে set +e চালু করা হলো যাতে কোনো ফাইল খুঁজে না পেলেও স্ক্রিপ্ট ক্র্যাশ না করে
+# এখান থেকে set +e চালু করা হলো যাতে কোনো ফাইল খুঁজে না পেলেও স্ক্রিপ্ট ক্র্যাশ না করে, বরং পরপর কমান্ড রান হয়
 set +e
 
 info "Applying Addon Settings Controllers..."
@@ -597,7 +571,8 @@ class ArixController extends Controller
             'logo' => (string) $this->settings->get('settings::arix:general:logo', '/arix/Arix.png'),
             'logoLight' => (string) $this->settings->get('settings::arix:general:logoLight', '/arix/Arix.png'),
             'fullLogo' => filter_var($this->settings->get('settings::arix:general:fullLogo', false), FILTER_VALIDATE_BOOLEAN),
-            'logoHeight' => (int) $this->settings->get('settings::arix:general:logoHeight', 32),             'discord' => (string)$this->settings->get('settings::arix:general:discord', ''),
+            'logoHeight' => (int) $this->settings->get('settings::arix:general:logoHeight', 32),
+            'discord' => (string)$this->settings->get('settings::arix:general:discord', ''),
             'support' => (string) $this->settings->get('settings::arix:general:support', ''),
             'extension_icons' => (string) $this->settings->get('settings::arix:general:extension_icons', '{}'),
         ];
@@ -609,7 +584,8 @@ class ArixController extends Controller
             'logo' => (string) $request->input('logo', '/arix/Arix.png'),
             'logoLight' => (string) $request->input('logoLight', '/arix/Arix.png'),
             'fullLogo' => filter_var($request->input('fullLogo', false), FILTER_VALIDATE_BOOLEAN),
-            'logoHeight' => (int) $request->input('logoHeight', 32),             'discord' => (string)$request->input('discord', ''),
+            'logoHeight' => (int) $request->input('logoHeight', 32),
+            'discord' => (string)$request->input('discord', ''),
             'support' => (string) $request->input('support', ''),
             'extension_icons' => (string) $request->input('extension_icons', '{}'),
         ]; 
@@ -637,6 +613,30 @@ if (file_exists($file)) {$content = file_get_contents($file);$content = preg_rep
 
 info "Final cache clearance..."
 php artisan optimize:clear > /dev/null 2>&1
+
+# ==========================================
+# SPLITTER INSTALLATION BLOCK (WITH CTRL+C BYPASS)
+# ==========================================
+echo -e "\n\033[1;36mSilently install splitter\033[0m"
+echo -e "\033[1;33mWait for 4 minutes to install it. After 4 minutes if it gets stuck here, then do CTRL + C\033[0m"
+
+cd /var/www/pterodactyl
+if command -v blueprint >/dev/null 2>&1; then
+    wget -q "$ADDON_URL/serversplitter.blueprint" -O "serversplitter.blueprint" || true
+    if [[ -s "serversplitter.blueprint" ]]; then
+        # CTRL+C চাপলে শুধু স্প্লিটার স্কিপ করে Add features এ যাবে
+        trap 'echo -e "\n\033[1;35m[!] CTRL+C pressed. Skipping splitter installation...\033[0m\n\033[1;32mMoving to add features...\033[0m"; kill -9 $PID 2>/dev/null; true' SIGINT
+        
+        yes | blueprint -i "serversplitter.blueprint" > /dev/null 2>&1 &
+        PID=$!
+        wait $PID || true
+        
+        # ডিফল্ট Ctrl+C ফিরিয়ে আনা হলো
+        trap 'echo -e "\n\033[1;31m[!] Force exit detected.\033[0m"; exit 1' SIGINT
+        rm -f "serversplitter.blueprint"
+    fi
+fi
+# ==========================================
 
 info "Applying Custom Sorting Logic for Extensions..."
 cd /var/www/pterodactyl 
@@ -964,9 +964,9 @@ export const ComponentLoader = () => {
 EOF
 
 export NODE_OPTIONS="--openssl-legacy-provider --no-deprecation"
-yarn build:production || true
-php artisan view:clear || true
-php artisan optimize:clear || true
+yarn build:production
+php artisan view:clear
+php artisan optimize:clear
 
 echo -e "\n${GREEN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
 typewriter "      🚀 NEW FEATURES APPLIED SUCCESSFULLY! 🚀    "
