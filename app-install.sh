@@ -74,6 +74,8 @@ check_dependencies() {
 verify_license() {
     local TYPE_REQ=$1
     local VERSION_REQ=$2
+    local IS_ADDON=$3
+    
     echo -e "${CYAN}┌──────────────────────────────────────────────┐${NC}"
     echo -e "${CYAN}│${YELLOW}         🔒 SECURITY VERIFICATION REQUIRED    ${CYAN}│${NC}"
     echo -e "${CYAN}└──────────────────────────────────────────────┘${NC}\n"
@@ -88,7 +90,14 @@ verify_license() {
     info "Establishing secure connection to licensing server..."
     
     USER_IP=$(curl -s ifconfig.me)
-    RESPONSE=$(curl -s -X POST "$API_URL" -H "Content-Type: application/json" -d "{\"email\":\"$USER_EMAIL\", \"key\":\"$USER_KEY\", \"ip\":\"$USER_IP\", \"requestedType\":\"$TYPE_REQ\", \"requestedVersion\":\"$VERSION_REQ\"}")
+    
+    if [ "$IS_ADDON" == "addon" ]; then
+        # Addon Verification Payload
+        RESPONSE=$(curl -s -X POST "$API_URL" -H "Content-Type: application/json" -d "{\"email\":\"$USER_EMAIL\", \"key\":\"$USER_KEY\", \"ip\":\"$USER_IP\", \"verify_type\":\"addon\"}")
+    else
+        # Theme Verification Payload
+        RESPONSE=$(curl -s -X POST "$API_URL" -H "Content-Type: application/json" -d "{\"email\":\"$USER_EMAIL\", \"key\":\"$USER_KEY\", \"ip\":\"$USER_IP\", \"requestedType\":\"$TYPE_REQ\", \"requestedVersion\":\"$VERSION_REQ\"}")
+    fi
     
     if echo "$RESPONSE" | grep -qE '"success":\s*true'; then SUCCESS="true"; else SUCCESS="false"; fi
     MESSAGE=$(echo "$RESPONSE" | sed -n 's/.*"message"\s*:\s*"\([^"]*\)".*/\1/p')
@@ -226,6 +235,10 @@ theme_installer_menu() {
 execute_theme_action() {
     if [ "$ACTION" == "update_theme" ]; then
         show_banner
+        verify_license "$LICENSE_TYPE" "$LICENSE_VERSION" ""
+        if [ "$LICENSE_VALID" == "false" ]; then return 0; fi
+
+        show_banner
         echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
         echo -e "${WHITE}             INITIALIZING UPDATE PROCESS          ${NC}"
         echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}" 
@@ -268,6 +281,10 @@ execute_theme_action() {
 
     if [ "$ACTION" == "uninstall" ]; then
         show_banner
+        verify_license "$LICENSE_TYPE" "$LICENSE_VERSION" ""
+        if [ "$LICENSE_VALID" == "false" ]; then return 0; fi
+
+        show_banner
         echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}"
         echo -e "${WHITE}             INITIALIZING UNINSTALLATION          ${NC}"
         echo -e "${CYAN} ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ${NC}" 
@@ -290,7 +307,7 @@ execute_theme_action() {
 
     if [ "$ACTION" == "install" ]; then
         show_banner
-        verify_license "$LICENSE_TYPE" "$LICENSE_VERSION"
+        verify_license "$LICENSE_TYPE" "$LICENSE_VERSION" ""
         if [ "$LICENSE_VALID" == "false" ]; then return 0; fi
 
         show_banner 
@@ -931,6 +948,10 @@ run_addon_blueprint() {
 }
 
 addon_installer_menu() {
+    show_banner
+    verify_license "addon" "addon" "addon"
+    if [ "$LICENSE_VALID" == "false" ]; then return 0; fi
+
     if ! command -v blueprint >/dev/null 2>&1; then
         error "Blueprint Framework is NOT installed!"
         sleep 3; return 0
