@@ -1,0 +1,76 @@
+#!/bin/bash
+# Kosmic Theme Installer
+# Author: xspidero
+# Modified: License checks removed
+
+set -e
+
+PANEL_DIR="${PANEL_DIR:-/var/www/pterodactyl}"
+THEME_DIR="$PANEL_DIR/public/themes/kosmic"
+BACKUP_DIR="$PANEL_DIR/theme_backups"
+
+echo "Kosmic Theme Installer v1.0.0 (License Removed)"
+
+if [ "$EUID" -ne 0 ]; then
+    echo "Error: Run this installer as root (sudo bash install.sh)."
+    exit 1
+fi
+
+if [ ! -d "$PANEL_DIR" ]; then
+    echo "Error: Pterodactyl directory ($PANEL_DIR) not found."
+    exit 1
+fi
+
+# Deploy theme assets
+echo "Deploying theme assets..."
+mkdir -p "$THEME_DIR"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" 2>/dev/null)" 2>/dev/null && pwd || echo "")"
+
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/public/themes/kosmic/theme.css" ]; then
+    # Local zip package extraction
+    cp -rf "$SCRIPT_DIR/public/themes/kosmic/"* "$THEME_DIR/"
+elif [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/theme.css" ]; then
+    # Flat directory fallback
+    cp -rf "$SCRIPT_DIR/"* "$THEME_DIR/" 2>/dev/null || true
+else
+    echo "Error: Local theme assets not found."
+    echo "Please make sure you are running this script directly from the extracted theme folder."
+    exit 1
+fi
+
+chown -R www-data:www-data "$THEME_DIR" 2>/dev/null || true
+chmod -R 755 "$THEME_DIR" 2>/dev/null || true
+
+# Modify panel views with sed (checking first to avoid duplicate tags)
+mkdir -p "$BACKUP_DIR"
+WRAPPER_FILE="$PANEL_DIR/resources/views/templates/wrapper.blade.php"
+ADMIN_FILE="$PANEL_DIR/resources/views/layouts/admin.blade.php"
+
+if [ -f "$WRAPPER_FILE" ]; then
+    if grep -q '/themes/kosmic/theme.css' "$WRAPPER_FILE"; then
+        echo "Kosmic already linked in wrapper.blade.php."
+    else
+        if [ ! -f "$BACKUP_DIR/wrapper.blade.php.bak" ]; then
+            cp -p "$WRAPPER_FILE" "$BACKUP_DIR/wrapper.blade.php.bak"
+        fi
+        sed -i "/@include('layouts.scripts')/a \\        <link rel=\"stylesheet\" href=\"/themes/kosmic/theme.css?v=1.0.0\">\\n        <script src=\"/themes/kosmic/theme.js?v=1.0.0\" defer></script>" "$WRAPPER_FILE"
+    fi
+fi
+
+if [ -f "$ADMIN_FILE" ]; then
+    if grep -q '/themes/kosmic/admin-theme.css' "$ADMIN_FILE"; then
+        echo "Kosmic already linked in admin.blade.php."
+    else
+        if [ ! -f "$BACKUP_DIR/admin.blade.php.bak" ]; then
+            cp -p "$ADMIN_FILE" "$BACKUP_DIR/admin.blade.php.bak"
+        fi
+        sed -i "/css\/pterodactyl\.css/a \\            <link rel=\"stylesheet\" href=\"/themes/kosmic/admin-theme.css?v=1.0.0\">" "$ADMIN_FILE"
+    fi
+fi
+
+# Clear view cache
+cd "$PANEL_DIR"
+php artisan view:clear >/dev/null 2>&1 || true
+php artisan config:clear >/dev/null 2>&1 || true
+
+echo "Installed successfully. Hard-refresh your browser."
