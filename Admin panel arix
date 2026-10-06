@@ -1,0 +1,795 @@
+cd /var/www/pterodactyl
+
+cat << 'EOF' > build_ska_theme.php
+<?php
+$adminLayoutPath = __DIR__ . '/resources/views/layouts/admin.blade.php';
+$routesPath = __DIR__ . '/routes/admin.php';
+$controllerPath = __DIR__ . '/app/Http/Controllers/Admin/SkaThemeController.php';
+$viewPath = __DIR__ . '/resources/views/admin/ska_theme.blade.php';
+
+// ১. কন্ট্রোলার তৈরি করা
+$controllerCode = <<<PHP
+<?php
+namespace Pterodactyl\Http\Controllers\Admin;
+use Illuminate\Http\Request;
+use Illuminate\View\View;
+use Pterodactyl\Http\Controllers\Controller;
+
+class SkaThemeController extends Controller {
+    public function index(): View {
+        \$settings = file_exists(storage_path('app/ska_theme.json')) ? json_decode(file_get_contents(storage_path('app/ska_theme.json')), true) : [];
+        return view('admin.ska_theme', compact('settings'));
+    }
+    public function store(Request \$request) {
+        file_put_contents(storage_path('app/ska_theme.json'), json_encode(\$request->all()));
+        return redirect()->route('admin.ska_theme')->with('success', 'SKA Admin Theme settings saved successfully!');
+    }
+}
+PHP;
+file_put_contents($controllerPath, $controllerCode);
+
+// ২. কাস্টম পেজ (View) তৈরি করা
+$viewCode = <<<HTML
+@extends('layouts.admin')
+@section('title', 'SKA Admin Styling')
+@section('content-header')
+    <h1>SKA Admin Styling<small>Customize your admin panel layout.</small></h1>
+    <ol class="breadcrumb">
+        <li><a href="{{ route('admin.index') }}">Admin</a></li>
+        <li class="active">SKA Styling</li>
+    </ol>
+@endsection
+@section('content')
+<div class="row">
+    <div class="col-xs-12 col-md-8">
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Custom Theme Settings</h3>
+            </div>
+            <form action="{{ route('admin.ska_theme') }}" method="POST">
+                <div class="box-body">
+                    {!! csrf_field() !!}
+                    <div class="form-group">
+                        <label>Background Image URL</label>
+                        <input type="text" name="bg_image" class="form-control" value="{{ \$settings['bg_image'] ?? '' }}" placeholder="https://example.com/image.png">
+                        <p class="text-muted small">Leave blank to use the default Arix background.</p>
+                    </div>
+                    <div class="form-group">
+                        <label>Primary Color (Hex)</label>
+                        <input type="text" name="primary_color" class="form-control" value="{{ \$settings['primary_color'] ?? '' }}" placeholder="#8a2be2">
+                        <p class="text-muted small">Changes the top navigation and active button colors.</p>
+                    </div>
+                    <div class="form-group">
+                        <label>Custom Font Family</label>
+                        <input type="text" name="font_family" class="form-control" value="{{ \$settings['font_family'] ?? '' }}" placeholder="Quicksand, Poppins, Roboto">
+                    </div>
+                </div>
+                <div class="box-footer">
+                    <button type="submit" class="btn btn-success pull-right">Save SKA Settings</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endsection
+HTML;
+file_put_contents($viewPath, $viewCode);
+
+// ৩. রাউট যুক্ত করা
+$routeContent = file_get_contents($routesPath);
+if (strpos($routeContent, 'admin.ska_theme') === false) {
+    $routeCode = "\n// SKA Custom Theme Routes\nRoute::get('/ska-theme', [\Pterodactyl\Http\Controllers\Admin\SkaThemeController::class, 'index'])->name('admin.ska_theme');\nRoute::post('/ska-theme', [\Pterodactyl\Http\Controllers\Admin\SkaThemeController::class, 'store']);\n";
+    file_put_contents($routesPath, $routeContent . $routeCode);
+}
+
+// ৪. সাইডবার এবং CSS লেআউটে যুক্ত করা
+$adminLayout = file_get_contents($adminLayoutPath);
+
+// সাইডবার বাটন
+$sidebarButton = <<<HTML
+<!-- SKA SIDEBAR -->
+                        @if (isset(\$siteConfiguration['arix']['advanced']['adminTheme']) && \$siteConfiguration['arix']['advanced']['adminTheme'])
+                        <li class="{{ Route::currentRouteName() !== 'admin.ska_theme' ?: 'active' }}">
+                            <a href="{{ route('admin.ska_theme') }}">
+                                <i data-lucide="palette"></i> <span>Admin Styling (SKA)</span>
+                            </a>
+                        </li>
+                        @endif
+                        <!-- END SKA SIDEBAR -->
+HTML;
+
+if (strpos($adminLayout, '<!-- SKA SIDEBAR -->') === false) {
+    $adminLayout = str_replace('<li class="arix">', $sidebarButton . "\n                        <li class=\"arix\">", $adminLayout);
+}
+
+// কাস্টম CSS ইঞ্জেকশন
+$cssInjection = <<<HTML
+<!-- SKA STYLE FIX -->
+        @php
+            \$skaSettings = file_exists(storage_path('app/ska_theme.json')) ? json_decode(file_get_contents(storage_path('app/ska_theme.json')), true) : [];
+        @endphp
+        @if (isset(\$siteConfiguration['arix']['advanced']['adminTheme']) && \$siteConfiguration['arix']['advanced']['adminTheme'])
+        <style>
+            @if(!empty(\$skaSettings['font_family']))
+                body, h1, h2, h3, h4, h5, h6, .wrapper, .main-sidebar, .content-wrapper {
+                    font-family: '{{\$skaSettings['font_family']}}', sans-serif !important;
+                }
+            @endif
+            @if(!empty(\$skaSettings['bg_image']))
+                body, .wrapper, .content-wrapper, .main-sidebar {
+                    background-image: url('{{\$skaSettings['bg_image']}}') !important;
+                    background-size: cover !important;
+                    background-position: center !important;
+                    background-attachment: fixed !important;
+                }
+                .content-wrapper { background-color: rgba(15, 23, 42, 0.7) !important; }
+                .main-sidebar { background-color: rgba(15, 23, 42, 0.8) !important; }
+                .skin-blue .main-header .navbar, .skin-blue .main-header .logo { background-color: rgba(15, 23, 42, 0.9) !important; border-bottom: 1px solid rgba(255,255,255,0.1); }
+            @endif
+            @if(!empty(\$skaSettings['primary_color']))
+                :root { --primary: {{\$skaSettings['primary_color']}} !important; }
+                .skin-blue .main-header .navbar, .skin-blue .main-header .logo { background-color: {{\$skaSettings['primary_color']}} !important; }
+                .box.box-primary { border-top-color: {{\$skaSettings['primary_color']}} !important; }
+            @endif
+        </style>
+        @endif
+        <!-- END SKA STYLE FIX -->
+HTML;
+
+if (strpos($adminLayout, '<!-- SKA STYLE FIX -->') === false) {
+    $adminLayout = str_replace('</head>', $cssInjection . "\n</head>", $adminLayout);
+}
+
+file_put_contents($adminLayoutPath, $adminLayout);
+echo "[✔] SKA Custom Admin Theme created successfully!\n";
+EOF
+
+php build_ska_theme.php
+rm -f build_ska_theme.php
+
+# ক্যাশ ক্লিয়ার
+php artisan route:clear
+php artisan view:clear
+php artisan cache:clear
+chown -R www-data:www-data /var/www/pterodactyl/*
+
+echo "[✔] Powered By SKA - Please hard refresh your Admin Panel!"
+cd /var/www/pterodactyl
+
+cat << 'EOF' > upgrade_ska_theme.php
+<?php
+$adminLayoutPath = __DIR__ . '/resources/views/layouts/admin.blade.php';
+$controllerPath = __DIR__ . '/app/Http/Controllers/Admin/SkaThemeController.php';
+$viewPath = __DIR__ . '/resources/views/admin/ska_theme.blade.php';
+
+// ১. কন্ট্রোলার আপডেট (ইমেজ আপলোড সিস্টেমসহ)
+$controllerCode = <<<PHP
+<?php
+namespace Pterodactyl\Http\Controllers\Admin;
+use Illuminate\Http\Request;
+use Illuminate\View\View;
+use Pterodactyl\Http\Controllers\Controller;
+
+class SkaThemeController extends Controller {
+    public function index(): View {
+        \$settings = file_exists(storage_path('app/ska_theme.json')) ? json_decode(file_get_contents(storage_path('app/ska_theme.json')), true) : [];
+        return view('admin.ska_theme', compact('settings'));
+    }
+    public function store(Request \$request) {
+        \$data = \$request->except(['_token', 'bg_image_file']);
+        \$oldSettings = file_exists(storage_path('app/ska_theme.json')) ? json_decode(file_get_contents(storage_path('app/ska_theme.json')), true) : [];
+        \$data['bg_image'] = \$oldSettings['bg_image'] ?? '';
+
+        // ফোল্ডার না থাকলে তৈরি করা
+        if (!file_exists(public_path('assets/ska_theme'))) {
+            mkdir(public_path('assets/ska_theme'), 0755, true);
+        }
+
+        // ইমেজ আপলোড বা লিংক সেভ করা
+        if (\$request->hasFile('bg_image_file')) {
+            \$file = \$request->file('bg_image_file');
+            \$filename = time() . '_' . \$file->getClientOriginalName();
+            \$file->move(public_path('assets/ska_theme'), \$filename);
+            \$data['bg_image'] = '/assets/ska_theme/' . \$filename;
+        } elseif (\$request->filled('bg_image_link')) {
+            \$data['bg_image'] = \$request->input('bg_image_link');
+        }
+
+        file_put_contents(storage_path('app/ska_theme.json'), json_encode(\$data));
+        return redirect()->route('admin.ska_theme')->with('success', 'SKA Admin Theme updated perfectly!');
+    }
+}
+PHP;
+file_put_contents($controllerPath, $controllerCode);
+
+// ২. ভিউ আপডেট (কালার পিকার, ড্রপডাউন এবং ফাইল আপলোড)
+$viewCode = <<<HTML
+@extends('layouts.admin')
+@section('title', 'SKA Admin Styling')
+@section('content-header')
+    <h1>SKA Admin Styling<small>Advanced customization.</small></h1>
+    <ol class="breadcrumb">
+        <li><a href="{{ route('admin.index') }}">Admin</a></li>
+        <li class="active">SKA Styling</li>
+    </ol>
+@endsection
+@section('content')
+<div class="row">
+    <div class="col-xs-12 col-md-8">
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Custom Theme Settings</h3>
+            </div>
+            <!-- enctype="multipart/form-data" যোগ করা হয়েছে ফাইল আপলোডের জন্য -->
+            <form action="{{ route('admin.ska_theme') }}" method="POST" enctype="multipart/form-data">
+                <div class="box-body">
+                    {!! csrf_field() !!}
+                    
+                    <div class="form-group">
+                        <label>Background Image URL (Link)</label>
+                        <input type="text" name="bg_image_link" class="form-control" value="{{ \$settings['bg_image'] ?? '' }}" placeholder="https://example.com/image.png">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>OR Upload Background Image</label>
+                        <input type="file" name="bg_image_file" class="form-control" accept="image/*">
+                        <p class="text-muted small">Uploading a file will automatically override the URL link.</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Primary Color</label><br>
+                        <!-- কালার পিকার -->
+                        <input type="color" name="primary_color" style="height:40px; width:100px; border:none; cursor:pointer; border-radius: 4px;" value="{{ \$settings['primary_color'] ?? '#8a2be2' }}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Custom Font Family</label>
+                        <!-- ফন্ট ড্রপডাউন লিস্ট -->
+                        <select name="font_family" class="form-control">
+                            @php
+                                \$fonts = ['Poppins', 'DM Sans', 'Roboto', 'Science Gothic', 'Inter', 'Montserrat', 'Open Sans', 'Lato', 'Nunito', 'Oswald', 'Playfair Display', 'Source Sans Pro', 'Quicksand', 'Manrope', 'Space Grotesk'];
+                                \$currentFont = \$settings['font_family'] ?? 'Poppins';
+                            @endphp
+                            @foreach(\$fonts as \$font)
+                                <option value="{{ \$font }}" {{ \$currentFont == \$font ? 'selected' : '' }}>{{ \$font }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                <div class="box-footer">
+                    <button type="submit" class="btn btn-success pull-right">Save SKA Settings</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endsection
+HTML;
+file_put_contents($viewPath, $viewCode);
+
+// ৩. CSS ইনজেকশন আপডেট (যাতে ইমেজ শো করে এবং ফন্ট কাজ করে)
+$adminLayout = file_get_contents($adminLayoutPath);
+$adminLayout = preg_replace('/<!-- SKA STYLE FIX -->.*?<!-- END SKA STYLE FIX -->\n?/is', '', $adminLayout);
+
+$cssInjection = <<<HTML
+<!-- SKA STYLE FIX -->
+        @php
+            \$skaSettings = file_exists(storage_path('app/ska_theme.json')) ? json_decode(file_get_contents(storage_path('app/ska_theme.json')), true) : [];
+        @endphp
+        @if (isset(\$siteConfiguration['arix']['advanced']['adminTheme']) && \$siteConfiguration['arix']['advanced']['adminTheme'])
+        <style>
+            @if(!empty(\$skaSettings['font_family']))
+                @import url('https://fonts.googleapis.com/css2?family={{ str_replace(' ', '+', \$skaSettings['font_family']) }}:wght@300;400;500;600;700&display=swap');
+                body, h1, h2, h3, h4, h5, h6, .wrapper, .main-sidebar, .content-wrapper, p, span, a, div, button, input, select {
+                    font-family: '{{\$skaSettings['font_family']}}', sans-serif !important;
+                }
+            @endif
+            
+            @if(!empty(\$skaSettings['bg_image']))
+                body {
+                    background-image: url('{{\$skaSettings['bg_image']}}') !important;
+                    background-size: cover !important;
+                    background-position: center !important;
+                    background-attachment: fixed !important;
+                }
+                /* Arix এর নিজস্ব ব্যাকগ্রাউন্ড মুছে ট্রান্সপারেন্ট করা হলো যাতে ইমেজটি দেখা যায় */
+                .wrapper, .content-wrapper, .main-sidebar, .arix-theme {
+                    background-color: transparent !important;
+                }
+                /* টেক্সট পড়ার সুবিধার জন্য হালকা কালো আস্তরণ (Overlay) */
+                .content-wrapper { background-color: rgba(15, 23, 42, 0.75) !important; }
+                .main-sidebar { background-color: rgba(15, 23, 42, 0.85) !important; }
+                .skin-blue .main-header .navbar, .skin-blue .main-header .logo { 
+                    background-color: rgba(15, 23, 42, 0.9) !important; 
+                    border-bottom: 1px solid rgba(255,255,255,0.1); 
+                }
+            @endif
+            
+            @if(!empty(\$skaSettings['primary_color']))
+                :root { --primary: {{\$skaSettings['primary_color']}} !important; }
+                .skin-blue .main-header .navbar, .skin-blue .main-header .logo { background-color: {{\$skaSettings['primary_color']}} !important; }
+                .box.box-primary { border-top-color: {{\$skaSettings['primary_color']}} !important; }
+                .main-sidebar .sidebar-menu li.active > a { background-color: {{\$skaSettings['primary_color']}} !important; }
+                .btn-primary { background-color: {{\$skaSettings['primary_color']}} !important; border-color: {{\$skaSettings['primary_color']}} !important; }
+            @endif
+        </style>
+        @endif
+        <!-- END SKA STYLE FIX -->
+HTML;
+
+$adminLayout = str_replace('</head>', $cssInjection . "\n</head>", $adminLayout);
+file_put_contents($adminLayoutPath, $adminLayout);
+echo "[✔] SKA Theme V2 upgraded successfully!\n";
+EOF
+
+php upgrade_ska_theme.php
+rm -f upgrade_ska_theme.php
+
+# ক্যাশ ক্লিয়ার করা 
+php artisan view:clear
+php artisan cache:clear
+chown -R www-data:www-data /var/www/pterodactyl/*
+
+echo "[✔] Done! Please hard refresh your panel."
+cd /var/www/pterodactyl
+
+cat << 'EOF' > upgrade_ska_theme.php
+<?php
+$adminLayoutPath = __DIR__ . '/resources/views/layouts/admin.blade.php';
+$controllerPath = __DIR__ . '/app/Http/Controllers/Admin/SkaThemeController.php';
+$viewPath = __DIR__ . '/resources/views/admin/ska_theme.blade.php';
+
+// ১. কন্ট্রোলার আপডেট (ইমেজ আপলোড সিস্টেমসহ)
+$controllerCode = <<<PHP
+<?php
+namespace Pterodactyl\Http\Controllers\Admin;
+use Illuminate\Http\Request;
+use Illuminate\View\View;
+use Pterodactyl\Http\Controllers\Controller;
+
+class SkaThemeController extends Controller {
+    public function index(): View {
+        \$settings = file_exists(storage_path('app/ska_theme.json')) ? json_decode(file_get_contents(storage_path('app/ska_theme.json')), true) : [];
+        return view('admin.ska_theme', compact('settings'));
+    }
+    public function store(Request \$request) {
+        \$data = \$request->except(['_token', 'bg_image_file']);
+        \$oldSettings = file_exists(storage_path('app/ska_theme.json')) ? json_decode(file_get_contents(storage_path('app/ska_theme.json')), true) : [];
+        \$data['bg_image'] = \$oldSettings['bg_image'] ?? '';
+
+        // ফোল্ডার না থাকলে তৈরি করা
+        if (!file_exists(public_path('assets/ska_theme'))) {
+            mkdir(public_path('assets/ska_theme'), 0755, true);
+        }
+
+        // ইমেজ আপলোড বা লিংক সেভ করা
+        if (\$request->hasFile('bg_image_file')) {
+            \$file = \$request->file('bg_image_file');
+            \$filename = time() . '_' . \$file->getClientOriginalName();
+            \$file->move(public_path('assets/ska_theme'), \$filename);
+            \$data['bg_image'] = '/assets/ska_theme/' . \$filename;
+        } elseif (\$request->filled('bg_image_link')) {
+            \$data['bg_image'] = \$request->input('bg_image_link');
+        }
+
+        file_put_contents(storage_path('app/ska_theme.json'), json_encode(\$data));
+        return redirect()->route('admin.ska_theme')->with('success', 'SKA Admin Theme updated perfectly!');
+    }
+}
+PHP;
+file_put_contents($controllerPath, $controllerCode);
+
+// ২. ভিউ আপডেট (কালার পিকার, ড্রপডাউন এবং ফাইল আপলোড)
+$viewCode = <<<HTML
+@extends('layouts.admin')
+@section('title', 'SKA Admin Styling')
+@section('content-header')
+    <h1>SKA Admin Styling<small>Advanced customization.</small></h1>
+    <ol class="breadcrumb">
+        <li><a href="{{ route('admin.index') }}">Admin</a></li>
+        <li class="active">SKA Styling</li>
+    </ol>
+@endsection
+@section('content')
+<div class="row">
+    <div class="col-xs-12 col-md-8">
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Custom Theme Settings</h3>
+            </div>
+            <!-- enctype="multipart/form-data" যোগ করা হয়েছে ফাইল আপলোডের জন্য -->
+            <form action="{{ route('admin.ska_theme') }}" method="POST" enctype="multipart/form-data">
+                <div class="box-body">
+                    {!! csrf_field() !!}
+                    
+                    <div class="form-group">
+                        <label>Background Image URL (Link)</label>
+                        <input type="text" name="bg_image_link" class="form-control" value="{{ \$settings['bg_image'] ?? '' }}" placeholder="https://example.com/image.png">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>OR Upload Background Image</label>
+                        <input type="file" name="bg_image_file" class="form-control" accept="image/*">
+                        <p class="text-muted small">Uploading a file will automatically override the URL link.</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Primary Color</label><br>
+                        <!-- কালার পিকার -->
+                        <input type="color" name="primary_color" style="height:40px; width:100px; border:none; cursor:pointer; border-radius: 4px;" value="{{ \$settings['primary_color'] ?? '#8a2be2' }}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Custom Font Family</label>
+                        <!-- ফন্ট ড্রপডাউন লিস্ট -->
+                        <select name="font_family" class="form-control">
+                            @php
+                                \$fonts = ['Poppins', 'DM Sans', 'Roboto', 'Science Gothic', 'Inter', 'Montserrat', 'Open Sans', 'Lato', 'Nunito', 'Oswald', 'Playfair Display', 'Source Sans Pro', 'Quicksand', 'Manrope', 'Space Grotesk'];
+                                \$currentFont = \$settings['font_family'] ?? 'Poppins';
+                            @endphp
+                            @foreach(\$fonts as \$font)
+                                <option value="{{ \$font }}" {{ \$currentFont == \$font ? 'selected' : '' }}>{{ \$font }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                <div class="box-footer">
+                    <button type="submit" class="btn btn-success pull-right">Save SKA Settings</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endsection
+HTML;
+file_put_contents($viewPath, $viewCode);
+
+// ৩. CSS ইনজেকশন আপডেট (যাতে ইমেজ শো করে এবং ফন্ট কাজ করে)
+$adminLayout = file_get_contents($adminLayoutPath);
+$adminLayout = preg_replace('/<!-- SKA STYLE FIX -->.*?<!-- END SKA STYLE FIX -->\n?/is', '', $adminLayout);
+
+$cssInjection = <<<HTML
+<!-- SKA STYLE FIX -->
+        @php
+            \$skaSettings = file_exists(storage_path('app/ska_theme.json')) ? json_decode(file_get_contents(storage_path('app/ska_theme.json')), true) : [];
+        @endphp
+        @if (isset(\$siteConfiguration['arix']['advanced']['adminTheme']) && \$siteConfiguration['arix']['advanced']['adminTheme'])
+        <style>
+            @if(!empty(\$skaSettings['font_family']))
+                @import url('https://fonts.googleapis.com/css2?family={{ str_replace(' ', '+', \$skaSettings['font_family']) }}:wght@300;400;500;600;700&display=swap');
+                body, h1, h2, h3, h4, h5, h6, .wrapper, .main-sidebar, .content-wrapper, p, span, a, div, button, input, select {
+                    font-family: '{{\$skaSettings['font_family']}}', sans-serif !important;
+                }
+            @endif
+            
+            @if(!empty(\$skaSettings['bg_image']))
+                body {
+                    background-image: url('{{\$skaSettings['bg_image']}}') !important;
+                    background-size: cover !important;
+                    background-position: center !important;
+                    background-attachment: fixed !important;
+                }
+                /* Arix এর নিজস্ব ব্যাকগ্রাউন্ড মুছে ট্রান্সপারেন্ট করা হলো যাতে ইমেজটি দেখা যায় */
+                .wrapper, .content-wrapper, .main-sidebar, .arix-theme {
+                    background-color: transparent !important;
+                }
+                /* টেক্সট পড়ার সুবিধার জন্য হালকা কালো আস্তরণ (Overlay) */
+                .content-wrapper { background-color: rgba(15, 23, 42, 0.75) !important; }
+                .main-sidebar { background-color: rgba(15, 23, 42, 0.85) !important; }
+                .skin-blue .main-header .navbar, .skin-blue .main-header .logo { 
+                    background-color: rgba(15, 23, 42, 0.9) !important; 
+                    border-bottom: 1px solid rgba(255,255,255,0.1); 
+                }
+            @endif
+            
+            @if(!empty(\$skaSettings['primary_color']))
+                :root { --primary: {{\$skaSettings['primary_color']}} !important; }
+                .skin-blue .main-header .navbar, .skin-blue .main-header .logo { background-color: {{\$skaSettings['primary_color']}} !important; }
+                .box.box-primary { border-top-color: {{\$skaSettings['primary_color']}} !important; }
+                .main-sidebar .sidebar-menu li.active > a { background-color: {{\$skaSettings['primary_color']}} !important; }
+                .btn-primary { background-color: {{\$skaSettings['primary_color']}} !important; border-color: {{\$skaSettings['primary_color']}} !important; }
+            @endif
+        </style>
+        @endif
+        <!-- END SKA STYLE FIX -->
+HTML;
+
+$adminLayout = str_replace('</head>', $cssInjection . "\n</head>", $adminLayout);
+file_put_contents($adminLayoutPath, $adminLayout);
+echo "[✔] SKA Theme V2 upgraded successfully!\n";
+EOF
+
+php upgrade_ska_theme.php
+rm -f upgrade_ska_theme.php
+
+# ক্যাশ ক্লিয়ার করা 
+php artisan view:clear
+php artisan cache:clear
+chown -R www-data:www-data /var/www/pterodactyl/*
+
+echo "[✔] Done! Please hard refresh your panel."
+cd /var/www/pterodactyl
+
+cat << 'EOF' > update_glass.php
+<?php
+$viewPath = __DIR__ . '/resources/views/admin/ska_theme.blade.php';
+$adminLayoutPath = __DIR__ . '/resources/views/layouts/admin.blade.php';
+
+// ১. সেটিংস পেজে গ্লাস এফেক্ট কমানো-বাড়ানোর স্লাইডার যুক্ত করা
+$viewCode = <<<HTML
+@extends('layouts.admin')
+@section('title', 'SKA Admin Styling')
+@section('content-header')
+    <h1>SKA Admin Styling<small>Advanced customization.</small></h1>
+    <ol class="breadcrumb">
+        <li><a href="{{ route('admin.index') }}">Admin</a></li>
+        <li class="active">SKA Styling</li>
+    </ol>
+@endsection
+@section('content')
+<div class="row">
+    <div class="col-xs-12 col-md-8">
+        <div class="box box-primary">
+            <div class="box-header with-border">
+                <h3 class="box-title">Custom Theme Settings</h3>
+            </div>
+            <form action="{{ route('admin.ska_theme') }}" method="POST" enctype="multipart/form-data">
+                <div class="box-body">
+                    {!! csrf_field() !!}
+                    
+                    <div class="form-group">
+                        <label>Background Image URL (Link)</label>
+                        <input type="text" name="bg_image_link" class="form-control" value="{{ \$settings['bg_image'] ?? '' }}" placeholder="https://example.com/image.png">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>OR Upload Background Image</label>
+                        <input type="file" name="bg_image_file" class="form-control" accept="image/*">
+                        <p class="text-muted small">Uploading a file will automatically override the URL link.</p>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 form-group">
+                            <label>Primary Color</label><br>
+                            <input type="color" name="primary_color" style="height:40px; width:100%; border:none; cursor:pointer; border-radius: 4px;" value="{{ \$settings['primary_color'] ?? '#8a2be2' }}">
+                        </div>
+                        
+                        <div class="col-md-6 form-group">
+                            <label>Custom Font Family</label>
+                            <select name="font_family" class="form-control">
+                                @php
+                                    \$fonts = ['Poppins', 'DM Sans', 'Roboto', 'Science Gothic', 'Inter', 'Montserrat', 'Open Sans', 'Lato', 'Nunito', 'Oswald', 'Playfair Display', 'Source Sans Pro', 'Quicksand', 'Manrope', 'Space Grotesk'];
+                                    \$currentFont = \$settings['font_family'] ?? 'Poppins';
+                                @endphp
+                                @foreach(\$fonts as \$font)
+                                    <option value="{{ \$font }}" {{ \$currentFont == \$font ? 'selected' : '' }}>{{ \$font }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <hr>
+                    <h4><i class="fa fa-glass"></i> Glassmorphism Effect</h4>
+                    <p class="text-muted small">Works only when a Background Image is active.</p>
+
+                    <div class="form-group">
+                        <label>Glass Transparency (Opacity)</label>
+                        <input type="range" name="glass_opacity" min="0" max="1" step="0.1" value="{{ \$settings['glass_opacity'] ?? '0.5' }}" oninput="this.nextElementSibling.value = this.value">
+                        <output>{{ \$settings['glass_opacity'] ?? '0.5' }}</output>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Glass Blur Intensity (Pixels)</label>
+                        <input type="range" name="glass_blur" min="0" max="30" step="1" value="{{ \$settings['glass_blur'] ?? '10' }}" oninput="this.nextElementSibling.value = this.value">
+                        <output>{{ \$settings['glass_blur'] ?? '10' }}</output> px
+                    </div>
+
+                </div>
+                <div class="box-footer">
+                    <button type="submit" class="btn btn-success pull-right">Save SKA Settings</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endsection
+HTML;
+file_put_contents($viewPath, $viewCode);
+
+// ২. CSS আপডেট (গ্লাস এফেক্ট এবং সলিড কালার রিমুভ করা)
+$adminLayout = file_get_contents($adminLayoutPath);
+$adminLayout = preg_replace('/<!-- SKA STYLE FIX -->.*?<!-- END SKA STYLE FIX -->\n?/is', '', $adminLayout);
+
+$cssInjection = <<<HTML
+<!-- SKA STYLE FIX -->
+        @php
+            \$skaSettings = file_exists(storage_path('app/ska_theme.json')) ? json_decode(file_get_contents(storage_path('app/ska_theme.json')), true) : [];
+            \$gOpacity = \$skaSettings['glass_opacity'] ?? '0.5';
+            \$gBlur = \$skaSettings['glass_blur'] ?? '10';
+            \$gOpacityPercent = floatval(\$gOpacity) * 100;
+        @endphp
+        @if (isset(\$siteConfiguration['arix']['advanced']['adminTheme']) && \$siteConfiguration['arix']['advanced']['adminTheme'])
+        <style>
+            @if(!empty(\$skaSettings['font_family']))
+                @import url('https://fonts.googleapis.com/css2?family={{ str_replace(' ', '+', \$skaSettings['font_family']) }}:wght@300;400;500;600;700&display=swap');
+                body, h1, h2, h3, h4, h5, h6, .wrapper, .main-sidebar, .content-wrapper, p, span, a, div, button, input, select {
+                    font-family: '{{\$skaSettings['font_family']}}', sans-serif !important;
+                }
+            @endif
+            
+            @if(!empty(\$skaSettings['primary_color']))
+                :root { --primary: {{\$skaSettings['primary_color']}} !important; }
+                .skin-blue .main-header .navbar, .skin-blue .main-header .logo { background-color: {{\$skaSettings['primary_color']}} !important; }
+                .box.box-primary { border-top-color: {{\$skaSettings['primary_color']}} !important; }
+                .main-sidebar .sidebar-menu li.active > a { background-color: {{\$skaSettings['primary_color']}} !important; }
+                .btn-primary { background-color: {{\$skaSettings['primary_color']}} !important; border-color: {{\$skaSettings['primary_color']}} !important; }
+            @endif
+
+            @if(!empty(\$skaSettings['bg_image']))
+                body {
+                    background-image: url('{{\$skaSettings['bg_image']}}') !important;
+                    background-size: cover !important;
+                    background-position: center !important;
+                    background-attachment: fixed !important;
+                }
+                /* আগের সলিড ব্যাকগ্রাউন্ড রিমুভ করা হচ্ছে */
+                .wrapper, .content-wrapper, .main-sidebar, .arix-theme {
+                    background-color: transparent !important;
+                }
+                
+                /* সাইডবার এবং মেইন কন্টেন্টে গ্লাস এফেক্ট */
+                .content-wrapper, .main-sidebar { 
+                    background-color: rgba(15, 23, 42, {{\$gOpacity}}) !important; 
+                    backdrop-filter: blur({{\$gBlur}}px) !important;
+                    -webkit-backdrop-filter: blur({{\$gBlur}}px) !important;
+                }
+                
+                /* উপরের নেভবার (বেগুনি কালার) এর গ্লাস এফেক্ট */
+                @if(!empty(\$skaSettings['primary_color']))
+                .skin-blue .main-header .navbar, .skin-blue .main-header .logo { 
+                    background-color: color-mix(in srgb, {{\$skaSettings['primary_color']}} {{\$gOpacityPercent}}%, transparent) !important; 
+                    backdrop-filter: blur({{\$gBlur}}px) !important;
+                    -webkit-backdrop-filter: blur({{\$gBlur}}px) !important;
+                    border-bottom: 1px solid rgba(255,255,255,0.1) !important; 
+                }
+                @endif
+                
+                /* অ্যাডমিন বক্সগুলোতে গ্লাস এফেক্ট */
+                .box {
+                    background-color: rgba(15, 23, 42, {{\$gOpacity}}) !important;
+                    backdrop-filter: blur({{\$gBlur}}px) !important;
+                    -webkit-backdrop-filter: blur({{\$gBlur}}px) !important;
+                    border: 1px solid rgba(255,255,255,0.1) !important;
+                    color: #ffffff !important;
+                }
+                .box-header { color: #ffffff !important; border-bottom: 1px solid rgba(255,255,255,0.1) !important;}
+                .box-body, .box-footer { background-color: transparent !important; }
+                .box-footer { border-top: 1px solid rgba(255,255,255,0.1) !important;}
+                
+                /* টেক্সট আরও ক্লিয়ার বোঝার জন্য */
+                .text-muted { color: #d1d5db !important; }
+                .form-control { background-color: rgba(0,0,0,0.3) !important; color: white !important; border: 1px solid rgba(255,255,255,0.2) !important; }
+            @endif
+        </style>
+        @endif
+        <!-- END SKA STYLE FIX -->
+HTML;
+
+$adminLayout = str_replace('</head>', $cssInjection . "\n</head>", $adminLayout);
+file_put_contents($adminLayoutPath, $adminLayout);
+echo "[✔] SKA Glassmorphism with Sliders Activated!\n";
+EOF
+
+php update_glass.php
+rm -f update_glass.php
+
+# ক্যাশ ক্লিয়ার করা 
+php artisan view:clear
+php artisan cache:clear
+chown -R www-data:www-data /var/www/pterodactyl/*
+
+echo "[✔] Done! Please Hard Refresh (Ctrl+F5) your panel."
+cd /var/www/pterodactyl
+
+cat << 'EOF' > fix_navbar_color.php
+<?php
+$adminLayoutPath = __DIR__ . '/resources/views/layouts/admin.blade.php';
+$adminLayout = file_get_contents($adminLayoutPath);
+
+// Ager CSS ta remove kora hocche
+$adminLayout = preg_replace('/<!-- SKA STYLE FIX -->.*?<!-- END SKA STYLE FIX -->\n?/is', '', $adminLayout);
+
+$cssInjection = <<<HTML
+<!-- SKA STYLE FIX -->
+        @php
+            \$skaSettings = file_exists(storage_path('app/ska_theme.json')) ? json_decode(file_get_contents(storage_path('app/ska_theme.json')), true) : [];
+            \$gOpacity = \$skaSettings['glass_opacity'] ?? '0.5';
+            \$gBlur = \$skaSettings['glass_blur'] ?? '10';
+        @endphp
+        @if (isset(\$siteConfiguration['arix']['advanced']['adminTheme']) && \$siteConfiguration['arix']['advanced']['adminTheme'])
+        <style>
+            @if(!empty(\$skaSettings['font_family']))
+                @import url('https://fonts.googleapis.com/css2?family={{ str_replace(' ', '+', \$skaSettings['font_family']) }}:wght@300;400;500;600;700&display=swap');
+                body, h1, h2, h3, h4, h5, h6, .wrapper, .main-sidebar, .content-wrapper, p, span, a, div, button, input, select {
+                    font-family: '{{\$skaSettings['font_family']}}', sans-serif !important;
+                }
+            @endif
+            
+            @if(!empty(\$skaSettings['primary_color']))
+                :root { --primary: {{\$skaSettings['primary_color']}} !important; }
+                .box.box-primary { border-top-color: {{\$skaSettings['primary_color']}} !important; }
+                .main-sidebar .sidebar-menu li.active > a { background-color: {{\$skaSettings['primary_color']}} !important; }
+                .btn-primary { background-color: {{\$skaSettings['primary_color']}} !important; border-color: {{\$skaSettings['primary_color']}} !important; }
+            @endif
+
+            @if(!empty(\$skaSettings['bg_image']))
+                /* ==== BACKGROUND IMAGE THAKLE ==== */
+                body {
+                    background-image: url('{{\$skaSettings['bg_image']}}') !important;
+                    background-size: cover !important;
+                    background-position: center !important;
+                    background-attachment: fixed !important;
+                }
+                .wrapper, .content-wrapper, .main-sidebar, .arix-theme {
+                    background-color: transparent !important;
+                }
+                
+                /* Sidebar aur Content-e Glass Effect */
+                .content-wrapper, .main-sidebar { 
+                    background-color: rgba(15, 23, 42, {{\$gOpacity}}) !important; 
+                    backdrop-filter: blur({{\$gBlur}}px) !important;
+                    -webkit-backdrop-filter: blur({{\$gBlur}}px) !important;
+                }
+                
+                /* Navbar-e Glass Effect (KONO PRIMARY COLOR THAKBE NA) */
+                .skin-blue .main-header .navbar, .skin-blue .main-header .logo { 
+                    background-color: rgba(15, 23, 42, {{\$gOpacity}}) !important; 
+                    backdrop-filter: blur({{\$gBlur}}px) !important;
+                    -webkit-backdrop-filter: blur({{\$gBlur}}px) !important;
+                    border-bottom: 1px solid rgba(255,255,255,0.1) !important; 
+                }
+                
+                /* Admin Box gulo te Glass Effect */
+                .box {
+                    background-color: rgba(15, 23, 42, {{\$gOpacity}}) !important;
+                    backdrop-filter: blur({{\$gBlur}}px) !important;
+                    -webkit-backdrop-filter: blur({{\$gBlur}}px) !important;
+                    border: 1px solid rgba(255,255,255,0.1) !important;
+                    color: #ffffff !important;
+                }
+                .box-header { color: #ffffff !important; border-bottom: 1px solid rgba(255,255,255,0.1) !important;}
+                .box-body, .box-footer { background-color: transparent !important; }
+                .box-footer { border-top: 1px solid rgba(255,255,255,0.1) !important;}
+                
+                .text-muted { color: #d1d5db !important; }
+                .form-control { background-color: rgba(0,0,0,0.3) !important; color: white !important; border: 1px solid rgba(255,255,255,0.2) !important; }
+            
+            @else
+                /* ==== BACKGROUND IMAGE NA THAKLE ==== */
+                @if(!empty(\$skaSettings['primary_color']))
+                    /* Sudhu matro image na thaklei Navbar-e Primary Color apply hobe */
+                    .skin-blue .main-header .navbar, .skin-blue .main-header .logo { 
+                        background-color: {{\$skaSettings['primary_color']}} !important; 
+                    }
+                @endif
+            @endif
+        </style>
+        @endif
+        <!-- END SKA STYLE FIX -->
+HTML;
+
+$adminLayout = str_replace('</head>', $cssInjection . "\n</head>", $adminLayout);
+file_put_contents($adminLayoutPath, $adminLayout);
+echo "[✔] Navbar color logic updated successfully!\n";
+EOF
+
+php fix_navbar_color.php
+rm -f fix_navbar_color.php
+
+# Cache clear kora
+php artisan view:clear
+php artisan cache:clear
+chown -R www-data:www-data /var/www/pterodactyl/*
+
+echo "[✔] Done! Please Hard Refresh (Ctrl+F5) your panel."
+
