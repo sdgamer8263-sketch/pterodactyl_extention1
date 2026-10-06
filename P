@@ -2254,7 +2254,10 @@ except Exception as e:
                 chown -R www-data:www-data /var/www/pterodactyl > /dev/null 2>&1
                 chmod -R 755 storage/* bootstrap/cache/ > /dev/null 2>&1
             ) & spinner $!
-            
+            cd /var/www/pterodactyl 
+yarn add xterm-addon-unicode11
+yarn build
+cd
             success "Arix 2.1.0 Blueprint Fixes & Features Applied Successfully!"
         fi
         # ========================================================
