@@ -1,14 +1,33 @@
 #!/bin/bash
-\x78\x35\x30="\x45\x6e\x74\x65\x72\x20\x79\x6f\x75\x72\x20\x4c\x69\x63\x65\x6e\x73\x65\x20\x4b\x65\x79\x3a\x20"
-\x78\x35\x31="\x45\x6e\x74\x65\x72\x20\x79\x6f\x75\x72\x20\x45\x6d\x61\x69\x6c\x3a\x20"
-read -p "$(echo -e \x78\x35\x30)" \x6b\x65\x79
-read -p "$(echo -e \x78\x35\x31)" \x6d\x61\x69\x6c
-\x69\x70=$(curl -s https://api.ipify.org)
-\x75\x72\x6c="\x68\x74\x74\x70\x3a\x2f\x2f\x37\x38\x2e\x31\x35\x34\x2e\x31\x30\x33\x2e\x34\x39\x3a\x31\x31\x34\x34\x30\x2f\x61\x70\x69\x2f\x76\x65\x72\x69\x66\x79\x2d\x6c\x69\x63\x65\x6e\x73\x65"
-\x72\x65\x73\x70=$(curl -s -X POST "\x75\x72\x6c" -H "\x43\x6f\x6e\x74\x65\x6e\x74\x2d\x54\x79\x70\x65\x3a\x20\x61\x70\x70\x6c\x69\x63\x61\x74\x69\x6f\x6e\x2f\x6a\x73\x6f\x6e" -d "{\"key\":\"$\x6b\x65\x79\", \"email\":\"$\x6d\x61\x69\x6c\", \"ip\":\"$\x69\x70\"}")
-if echo "\x72\x65\x73\x70" | grep -q "\x74\x72\x75\x65"; then
-    echo -e "\x2e\x2e\x2e\x4f\x4b\x2e\x2e\x2e"
-    # মূল রান টাইম কমান্ড বা প্রসেস এখানে কাজ করবে
+
+echo "=========================================="
+echo "    SKA Hosting - Arix Utility Setup      "
+echo "=========================================="
+
+read -p "Enter your License Key: " LICENSE_KEY
+read -p "Enter your Email: " EMAIL
+
+USER_IP=$(curl -s https://api.ipify.org)
+
+echo "Verifying license with the server..."
+
+BOT_API_URL="http://78.154.103.49:11440/api/verify-license"
+
+RESPONSE=$(curl -s -X POST "$BOT_API_URL" \
+     -H "Content-Type: application/json" \
+     -d "{\"key\":\"$LICENSE_KEY\", \"email\":\"$EMAIL\", \"ip\":\"$USER_IP\"}")
+
+SUCCESS=$(echo "$RESPONSE" | grep -o '"success":true')
+
+if [ -n "$SUCCESS" ]; then
+    echo "=========================================="
+    echo "✅ License Verified Successfully!"
+    echo "=========================================="
+    echo "Running further installation steps..."
 else
+    echo "=========================================="
+    echo "❌ Verification Failed!"
+    echo "=========================================="
+    echo "$RESPONSE"
     exit 1
 fi
