@@ -12,7 +12,7 @@ USER_IP=$(curl -s https://api.ipify.org)
 echo -e "\e[33mVerifying license with the server...\e[0m"
 
 # তোমার বটের API URL
-BOT_API_URL="http://78.154.103.49:11440/api/verify-license"
+BOT_API_URL="http://78.154.103.27:13915/api/verify-license"
 
 RESPONSE=$(curl -s -X POST "$BOT_API_URL" \
      -H "Content-Type: application/json" \
